@@ -12,21 +12,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState("dashboard");
 
+  
   const handleLogout = async () => {
     if (window.confirm("Bạn có chắc chắn muốn đăng xuất?")) {
-      
-      const access_token = localStorage.getItem("access_token");
-
-      
-      if (access_token != null) {
-        await auth.signOut();
-        localStorage.removeItem("access_token")
-        navigate("/login");
-        
-      }
+      await auth.signOut();
+      localStorage.removeItem("isLoggedIn");
+      navigate("/login");
     }
   };
-
   const revenueData = [
     { month: "Jan", revenue: 5000 },
     { month: "Feb", revenue: 8000 },
