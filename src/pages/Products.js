@@ -1,8 +1,31 @@
 import { useState, useEffect } from "react";
-import { Table, Input, Button, Space, Popconfirm, Modal, Form, Select, Upload, message } from "antd";
-import { EditOutlined, EyeOutlined, EyeInvisibleOutlined, PlusOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Input,
+  Button,
+  Space,
+  Popconfirm,
+  Modal,
+  Form,
+  Select,
+  Upload,
+  message,
+} from "antd";
+import {
+  EditOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import { getCategories } from "../services/category-service";
-import { getProductsFromFireBase, storeProductFromFireBase, updateProductInFireBase, deleteProductFromFireBase } from "../services/product-service";
+import {
+  getProductsFromFireBase,
+  storeProductFromFireBase,
+  updateProductInFireBase,
+  deleteProductFromFireBase,
+} from "../services/product-service";
 
 const { Option } = Select;
 
@@ -70,6 +93,11 @@ const Products = () => {
   // Hàm chuyển file thành Base64
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
+      if (!(file instanceof Blob)) {
+        reject(new Error("File không hợp lệ!"));
+        return;
+      }
+
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result);
@@ -102,12 +130,16 @@ const Products = () => {
 
       // Xử lý ảnh
       if (fileList.length > 0) {
-        const file = fileList[0].originFileObj || fileList[0]; // Lấy file từ originFileObj hoặc file trực tiếp
-        if (file) {
-          console.log("Converting file to base64:", file);
-          values.imageUrl = await fileToBase64(file);
+        if (fileList[0].originFileObj) {
+          // Nếu có file mới được upload thì chuyển sang base64
+          console.log(
+            "Converting new file to base64:",
+            fileList[0].originFileObj
+          );
+          values.imageUrl = await fileToBase64(fileList[0].originFileObj);
         } else if (isEditing && editingProduct?.imageUrl) {
-          values.imageUrl = editingProduct.imageUrl; // Giữ ảnh cũ khi chỉnh sửa
+          // Nếu đang edit và không có file mới, giữ ảnh cũ
+          values.imageUrl = editingProduct.imageUrl;
         } else {
           values.imageUrl = "";
         }
@@ -141,8 +173,13 @@ const Products = () => {
 
   const handleToggleHidden = async (product) => {
     try {
-      await updateProductInFireBase(product.id, { ...product, hidden: !product.hidden });
-      message.success(`Sản phẩm đã được ${product.hidden ? "hiển thị" : "ẩn"} thành công`);
+      await updateProductInFireBase(product.id, {
+        ...product,
+        hidden: !product.hidden,
+      });
+      message.success(
+        `Sản phẩm đã được ${product.hidden ? "hiển thị" : "ẩn"} thành công`
+      );
       fetchProducts();
     } catch (error) {
       message.error("Không thể thay đổi trạng thái hiển thị sản phẩm");
@@ -160,14 +197,20 @@ const Products = () => {
       title: "Ảnh",
       dataIndex: "imageUrl",
       key: "imageUrl",
-      render: (url) => (url ? <img src={url} alt="product" style={{ width: 50 }} /> : "Không có ảnh"),
+      render: (url) =>
+        url ? (
+          <img src={url} alt="product" style={{ width: 50 }} />
+        ) : (
+          "Không có ảnh"
+        ),
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "name",
       key: "name",
       filteredValue: [searchText],
-      onFilter: (value, record) => record.name.toLowerCase().includes(value.toLowerCase()),
+      onFilter: (value, record) =>
+        record.name.toLowerCase().includes(value.toLowerCase()),
     },
     { title: "Giá", dataIndex: "price", key: "price" },
     {
@@ -178,7 +221,17 @@ const Products = () => {
     },
     { title: "Kích thước", dataIndex: "size", key: "size" },
     { title: "Số lượng", dataIndex: "quantity", key: "quantity" },
-    { title: "Trạng thái", dataIndex: "status", key: "status" },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      render: (status) => {
+        const color = status === "Available" ? "green" : "red";
+        const text = status === "Available" ? "Còn hàng" : "Hết hàng";
+        return <span style={{ color, fontWeight: "bold" }}>{text}</span>;
+      },
+    },
+    
     {
       title: "Hành động",
       key: "actions",
@@ -186,7 +239,9 @@ const Products = () => {
         <Space>
           <Button icon={<EditOutlined />} onClick={() => showModal(record)} />
           <Popconfirm
-            title={`Bạn có chắc chắn muốn ${record.hidden ? "hiển thị" : "ẩn"} sản phẩm này?`}
+            title={`Bạn có chắc chắn muốn ${
+              record.hidden ? "hiển thị" : "ẩn"
+            } sản phẩm này?`}
             onConfirm={() => handleToggleHidden(record)}
           >
             <Button
@@ -198,7 +253,9 @@ const Products = () => {
           </Popconfirm>
           <Popconfirm
             title="Bạn có chắc chắn muốn xóa sản phẩm này?"
-            onConfirm={() => deleteProductFromFireBase(record.id).then(fetchProducts)}
+            onConfirm={() =>
+              deleteProductFromFireBase(record.id).then(fetchProducts)
+            }
           >
             <Button icon={<DeleteOutlined />} danger />
           </Popconfirm>
@@ -229,7 +286,11 @@ const Products = () => {
           onChange={(e) => setSearchText(e.target.value)}
           style={{ width: 200 }}
         />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => showModal()}
+        >
           Thêm sản phẩm
         </Button>
         <Button onClick={() => setShowHidden(!showHidden)}>
@@ -292,11 +353,12 @@ const Products = () => {
             <Input type="number" />
           </Form.Item>
           <Form.Item name="status" label="Trạng thái">
-            <Select>
-              <Option value="Available">Còn hàng</Option>
-              <Option value="Out of Stock">Hết hàng</Option>
-            </Select>
-          </Form.Item>
+  <Select>
+    <Option value="Available">Còn hàng</Option>
+    <Option value="Out of Stock">Hết hàng</Option>
+  </Select>
+</Form.Item>
+
           <Form.Item label="Ảnh sản phẩm">
             <Upload {...uploadProps}>
               <Button icon={<UploadOutlined />}>Tải lên ảnh</Button>

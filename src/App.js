@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+} from "react-router-dom";
 import { Layout, Menu } from "antd";
 import {
   MenuUnfoldOutlined,
@@ -12,7 +18,7 @@ import {
   BarChartOutlined,
 } from "@ant-design/icons";
 import { auth } from "./firebase/firebaseConfig";
-import Dashboard from "./pages/Dashboard";
+import HomePage from "./pages/HomePage";
 import Products from "./pages/Products";
 import Orders from "./pages/Orders";
 import Users from "./pages/Users";
@@ -28,13 +34,43 @@ import { ToastContainer } from "react-toastify";
 const { Header, Sider, Content } = Layout;
 
 const menuItems = [
-  { key: "1", icon: <HomeOutlined />, path: "/dashboard", label: "Trang chủ" },
-  { key: "2", icon: <ShoppingCartOutlined />, path: "/categories", label: "Quản lý danh mục" },
-  { key: "3", icon: <ShoppingCartOutlined />, path: "/products", label: "Sản phẩm" },
-  { key: "4", icon: <OrderedListOutlined />, path: "/orders", label: "Quản lý đơn hàng" },
-  { key: "5", icon: <UserOutlined />, path: "/users", label: "Quản lý tài khoản" },
-  { key: "6", icon: <GiftOutlined />, path: "/gift-cards", label: "Quản lý thẻ quà tặng" },
-  { key: "7", icon: <BarChartOutlined />, path: "/statistics", label: "Thống kê" },
+  { key: "1", icon: <HomeOutlined />, path: "/home", label: "Trang chủ" },
+  {
+    key: "2",
+    icon: <ShoppingCartOutlined />,
+    path: "/categories",
+    label: "Quản lý danh mục",
+  },
+  {
+    key: "3",
+    icon: <ShoppingCartOutlined />,
+    path: "/products",
+    label: "Sản phẩm",
+  },
+  {
+    key: "4",
+    icon: <OrderedListOutlined />,
+    path: "/orders",
+    label: "Quản lý đơn hàng",
+  },
+  {
+    key: "5",
+    icon: <UserOutlined />,
+    path: "/users",
+    label: "Quản lý tài khoản",
+  },
+  {
+    key: "6",
+    icon: <GiftOutlined />,
+    path: "/gift-cards",
+    label: "Quản lý thẻ quà tặng",
+  },
+  {
+    key: "7",
+    icon: <BarChartOutlined />,
+    path: "/statistics",
+    label: "Thống kê",
+  },
 ];
 
 const App = () => {
@@ -65,14 +101,27 @@ const App = () => {
     <>
       <Router>
         <Routes>
-          <Route path="/login" element={!user ? <Login /> : <Navigate to="/dashboard" />} />
+          <Route
+            path="/login"
+            element={!user ? <Login /> : <Navigate to="/home" />}
+          />
           <Route
             path="/*"
             element={
               user ? (
                 <Layout style={{ minHeight: "100vh" }}>
-                  <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="dark">
-                    <div style={{ textAlign: "center", padding: collapsed ? "10px 0" : "20px 0" }}>
+                  <Sider
+                    collapsible
+                    collapsed={collapsed}
+                    onCollapse={setCollapsed}
+                    theme="dark"
+                  >
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: collapsed ? "10px 0" : "20px 0",
+                      }}
+                    >
                       <img
                         src={logo}
                         alt="Logo"
@@ -83,7 +132,11 @@ const App = () => {
                         }}
                       />
                     </div>
-                    <Menu theme="dark" mode="inline" defaultSelectedKeys={["1"]}>
+                    <Menu
+                      theme="dark"
+                      mode="inline"
+                      defaultSelectedKeys={["1"]}
+                    >
                       {menuItems.map((item) => (
                         <Menu.Item key={item.key} icon={item.icon}>
                           <Link to={item.path}>{item.label}</Link>
@@ -92,23 +145,47 @@ const App = () => {
                     </Menu>
                   </Sider>
                   <Layout>
-                    <Header style={{ background: "#fff", padding: 0, display: "flex", alignItems: "center" }}>
+                    <Header
+                      style={{
+                        background: "#fff",
+                        padding: 0,
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
                       {collapsed ? (
-                        <MenuUnfoldOutlined style={{ fontSize: "18px", padding: "0 16px", cursor: "pointer" }} onClick={() => setCollapsed(false)} />
+                        <MenuUnfoldOutlined
+                          style={{
+                            fontSize: "18px",
+                            padding: "0 16px",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => setCollapsed(false)}
+                        />
                       ) : (
-                        <MenuFoldOutlined style={{ fontSize: "18px", padding: "0 16px", cursor: "pointer" }} onClick={() => setCollapsed(true)} />
+                        <MenuFoldOutlined
+                          style={{
+                            fontSize: "18px",
+                            padding: "0 16px",
+                            cursor: "pointer",
+                          }}
+                          onClick={() => setCollapsed(true)}
+                        />
                       )}
                     </Header>
                     <Content style={{ margin: "16px" }}>
                       <Routes>
-                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/home" element={<HomePage />} />
                         <Route path="/products" element={<Products />} />
                         <Route path="/orders" element={<Orders />} />
                         <Route path="/categories" element={<Category />} />
                         <Route path="/users" element={<Users />} />
                         <Route path="/gift-cards" element={<GiftCards />} />
                         <Route path="/statistics" element={<Statistics />} />
-                        <Route path="*" element={<Navigate to="/dashboard" />} />
+                        <Route
+                          path="*"
+                          element={<Navigate to="/home" />}
+                        />
                       </Routes>
                     </Content>
                   </Layout>
