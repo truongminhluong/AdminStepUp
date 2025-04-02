@@ -68,9 +68,9 @@ export default function HomePage() {
      <div className="p-4">
     <div className="flex justify-between items-center"  style={{ background: "#fff", padding: "0 20px", display: "flex", justifyContent: "space-between", alignItems: "center", margin: "20px" }}>
         <h1 className="text-xl font-bold" style={{alignContent:"center",margin: "20px"}}>Trang chủ</h1>
-        <Button type="primary" icon={<LogoutOutlined />} onClick={handleLogout}>
+        {/* <Button type="primary" icon={<LogoutOutlined />} onClick={handleLogout}>
           Đăng xuất
-        </Button>
+        </Button> */}
       </div>
 
       <Row gutter={16} className="mt-4">

@@ -30,6 +30,9 @@ import {
 const { Option } = Select;
 
 const Products = () => {
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+  const [detailProduct, setDetailProduct] = useState(null);
+
   const [searchText, setSearchText] = useState("");
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -44,6 +47,11 @@ const Products = () => {
     fetchProducts();
     fetchCategories();
   }, []);
+
+  const showDetailModal = (product) => {
+    setDetailProduct(product);
+    setIsDetailModalVisible(true);
+  };
 
   const fetchProducts = async () => {
     const data = await getProductsFromFireBase();
@@ -231,12 +239,18 @@ const Products = () => {
         return <span style={{ color, fontWeight: "bold" }}>{text}</span>;
       },
     },
-    
+
     {
       title: "Hành động",
       key: "actions",
       render: (_, record) => (
         <Space>
+          <Button
+            icon={<EyeOutlined />}
+            onClick={() => showDetailModal(record)}
+          >
+            Xem chi tiết
+          </Button>
           <Button icon={<EditOutlined />} onClick={() => showModal(record)} />
           <Popconfirm
             title={`Bạn có chắc chắn muốn ${
@@ -245,7 +259,7 @@ const Products = () => {
             onConfirm={() => handleToggleHidden(record)}
           >
             <Button
-              icon={record.hidden ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+              icon={record.hidden ? <EyeInvisibleOutlined /> : <EyeOutlined />}
               danger={!record.hidden}
             >
               {record.hidden ? "Hiển thị" : "Ẩn"}
@@ -353,11 +367,11 @@ const Products = () => {
             <Input type="number" />
           </Form.Item>
           <Form.Item name="status" label="Trạng thái">
-  <Select>
-    <Option value="Available">Còn hàng</Option>
-    <Option value="Out of Stock">Hết hàng</Option>
-  </Select>
-</Form.Item>
+            <Select>
+              <Option value="Available">Còn hàng</Option>
+              <Option value="Out of Stock">Hết hàng</Option>
+            </Select>
+          </Form.Item>
 
           <Form.Item label="Ảnh sản phẩm">
             <Upload {...uploadProps}>
@@ -366,6 +380,29 @@ const Products = () => {
           </Form.Item>
         </Form>
       </Modal>
+      <Modal
+  title="Chi tiết sản phẩm"
+  open={isDetailModalVisible}
+  onCancel={() => setIsDetailModalVisible(false)}
+  footer={[
+    <Button key="close" onClick={() => setIsDetailModalVisible(false)}>
+      Đóng
+    </Button>,
+  ]}
+>
+  {detailProduct && (
+    <div>
+      <p><strong>Tên sản phẩm:</strong> {detailProduct.name}</p>
+      <p><strong>Giá:</strong> {detailProduct.price.toLocaleString()} VND</p>
+      <p><strong>Danh mục:</strong> {getCategoryName(detailProduct.category)}</p>
+      <p><strong>Kích thước:</strong> {detailProduct.size}</p>
+      <p><strong>Số lượng:</strong> {detailProduct.quantity}</p>
+      <p><strong>Trạng thái:</strong> {detailProduct.status === "Available" ? "Còn hàng" : "Hết hàng"}</p>
+      {detailProduct.imageUrl && <img src={detailProduct.imageUrl} alt="product" style={{ width: "100%" }} />}
+    </div>
+  )}
+</Modal>
+
     </div>
   );
 };

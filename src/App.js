@@ -16,6 +16,7 @@ import {
   UserOutlined,
   GiftOutlined,
   BarChartOutlined,
+  LogoutOutlined,
 } from "@ant-design/icons";
 import { auth } from "./firebase/firebaseConfig";
 import HomePage from "./pages/HomePage";
@@ -30,48 +31,9 @@ import { ADMIN_UID } from "./config";
 import logo from "./images/logo.jpg";
 import Category from "./pages/Category";
 import { ToastContainer } from "react-toastify";
+import { Modal } from "antd";
 
 const { Header, Sider, Content } = Layout;
-
-const menuItems = [
-  { key: "1", icon: <HomeOutlined />, path: "/home", label: "Trang chủ" },
-  {
-    key: "2",
-    icon: <ShoppingCartOutlined />,
-    path: "/categories",
-    label: "Quản lý danh mục",
-  },
-  {
-    key: "3",
-    icon: <ShoppingCartOutlined />,
-    path: "/products",
-    label: "Sản phẩm",
-  },
-  {
-    key: "4",
-    icon: <OrderedListOutlined />,
-    path: "/orders",
-    label: "Quản lý đơn hàng",
-  },
-  {
-    key: "5",
-    icon: <UserOutlined />,
-    path: "/users",
-    label: "Quản lý tài khoản",
-  },
-  {
-    key: "6",
-    icon: <GiftOutlined />,
-    path: "/gift-cards",
-    label: "Quản lý thẻ quà tặng",
-  },
-  {
-    key: "7",
-    icon: <BarChartOutlined />,
-    path: "/statistics",
-    label: "Thống kê",
-  },
-];
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -93,35 +55,51 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
+  const handleLogout = () => {
+    console.log("Logout clicked");
+    Modal.confirm({
+      title: "Xác nhận",
+      content: "Bạn có chắc chắn muốn đăng xuất không?",
+      onOk: () => {
+        console.log("Logging out...");
+        auth.signOut()
+          .then(() => {
+            localStorage.removeItem("isLoggedIn");
+            setUser(null);
+          })
+          .catch((error) => console.error("Lỗi khi đăng xuất:", error));
+      },
+    });
+  };
+  
+
   if (loading) {
     return <div>Loading...</div>;
   }
+
+  const menuItems = [
+    { key: "1", icon: <HomeOutlined />, path: "/home", label: "Trang chủ" },
+    { key: "2", icon: <ShoppingCartOutlined />, path: "/categories", label: "Quản lý danh mục" },
+    { key: "3", icon: <ShoppingCartOutlined />, path: "/products", label: "Sản phẩm" },
+    { key: "4", icon: <OrderedListOutlined />, path: "/orders", label: "Quản lý đơn hàng" },
+    { key: "5", icon: <UserOutlined />, path: "/users", label: "Quản lý tài khoản" },
+    { key: "6", icon: <GiftOutlined />, path: "/gift-cards", label: "Quản lý thẻ quà tặng" },
+    { key: "7", icon: <BarChartOutlined />, path: "/statistics", label: "Thống kê" },
+    { key: "8", icon: <LogoutOutlined />, action: handleLogout, label: "Đăng xuất" },
+  ];
 
   return (
     <>
       <Router>
         <Routes>
-          <Route
-            path="/login"
-            element={!user ? <Login /> : <Navigate to="/home" />}
-          />
+          <Route path="/login" element={!user ? <Login /> : <Navigate to="/home" />} />
           <Route
             path="/*"
             element={
               user ? (
                 <Layout style={{ minHeight: "100vh" }}>
-                  <Sider
-                    collapsible
-                    collapsed={collapsed}
-                    onCollapse={setCollapsed}
-                    theme="dark"
-                  >
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: collapsed ? "10px 0" : "20px 0",
-                      }}
-                    >
+                  <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="dark">
+                    <div style={{ textAlign: "center", padding: collapsed ? "10px 0" : "20px 0" }}>
                       <img
                         src={logo}
                         alt="Logo"
@@ -132,17 +110,13 @@ const App = () => {
                         }}
                       />
                     </div>
-                    <Menu
-                      theme="dark"
-                      mode="inline"
-                      defaultSelectedKeys={["1"]}
-                    >
-                      {menuItems.map((item) => (
-                        <Menu.Item key={item.key} icon={item.icon}>
-                          <Link to={item.path}>{item.label}</Link>
-                        </Menu.Item>
-                      ))}
-                    </Menu>
+                    <Menu theme="dark" mode="inline" items={menuItems.map(item => ({
+  key: item.key,
+  icon: item.icon,
+  label: <Link to={item.path}>{item.label}</Link>,
+  onClick: item.path === "/logout" ? handleLogout : undefined
+}))} />
+
                   </Sider>
                   <Layout>
                     <Header
@@ -155,20 +129,12 @@ const App = () => {
                     >
                       {collapsed ? (
                         <MenuUnfoldOutlined
-                          style={{
-                            fontSize: "18px",
-                            padding: "0 16px",
-                            cursor: "pointer",
-                          }}
+                          style={{ fontSize: "18px", padding: "0 16px", cursor: "pointer" }}
                           onClick={() => setCollapsed(false)}
                         />
                       ) : (
                         <MenuFoldOutlined
-                          style={{
-                            fontSize: "18px",
-                            padding: "0 16px",
-                            cursor: "pointer",
-                          }}
+                          style={{ fontSize: "18px", padding: "0 16px", cursor: "pointer" }}
                           onClick={() => setCollapsed(true)}
                         />
                       )}
@@ -182,10 +148,7 @@ const App = () => {
                         <Route path="/users" element={<Users />} />
                         <Route path="/gift-cards" element={<GiftCards />} />
                         <Route path="/statistics" element={<Statistics />} />
-                        <Route
-                          path="*"
-                          element={<Navigate to="/home" />}
-                        />
+                        <Route path="*" element={<Navigate to="/home" />} />
                       </Routes>
                     </Content>
                   </Layout>
