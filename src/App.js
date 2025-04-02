@@ -31,7 +31,6 @@ import { ADMIN_UID } from "./config";
 import logo from "./images/logo.jpg";
 import Category from "./pages/Category";
 import { ToastContainer } from "react-toastify";
-import { Modal } from "antd";
 
 const { Header, Sider, Content } = Layout;
 
@@ -56,22 +55,15 @@ const App = () => {
   }, []);
 
   const handleLogout = () => {
-    console.log("Logout clicked");
-    Modal.confirm({
-      title: "Xác nhận",
-      content: "Bạn có chắc chắn muốn đăng xuất không?",
-      onOk: () => {
-        console.log("Logging out...");
-        auth.signOut()
-          .then(() => {
-            localStorage.removeItem("isLoggedIn");
-            setUser(null);
-          })
-          .catch((error) => console.error("Lỗi khi đăng xuất:", error));
-      },
-    });
+    auth.signOut()
+      .then(() => {
+        localStorage.removeItem("isLoggedIn");
+        setUser(null);
+      })
+      .catch((error) => {
+        console.error("Lỗi khi đăng xuất:", error);
+      });
   };
-  
 
   if (loading) {
     return <div>Loading...</div>;
@@ -110,13 +102,19 @@ const App = () => {
                         }}
                       />
                     </div>
-                    <Menu theme="dark" mode="inline" items={menuItems.map(item => ({
-  key: item.key,
-  icon: item.icon,
-  label: <Link to={item.path}>{item.label}</Link>,
-  onClick: item.path === "/logout" ? handleLogout : undefined
-}))} />
-
+                    <Menu theme="dark" mode="inline" defaultSelectedKeys={["1"]}>
+                      {menuItems.map((item) =>
+                        item.action ? (
+                          <Menu.Item key={item.key} icon={item.icon} onClick={item.action}>
+                            {item.label}
+                          </Menu.Item>
+                        ) : (
+                          <Menu.Item key={item.key} icon={item.icon}>
+                            <Link to={item.path}>{item.label}</Link>
+                          </Menu.Item>
+                        )
+                      )}
+                    </Menu>
                   </Sider>
                   <Layout>
                     <Header
