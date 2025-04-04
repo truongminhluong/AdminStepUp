@@ -1,38 +1,12 @@
 import { useState, useEffect } from "react";
-import {
-  Table,
-  Input,
-  Button,
-  Space,
-  Popconfirm,
-  Modal,
-  Form,
-  Select,
-  Upload,
-  message,
-} from "antd";
-import {
-  EditOutlined,
-  EyeOutlined,
-  EyeInvisibleOutlined,
-  PlusOutlined,
-  DeleteOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import { Table, Input, Button, Space, Popconfirm, Modal, Form, Select, Upload, message } from "antd";
+import { EditOutlined, EyeOutlined, EyeInvisibleOutlined, PlusOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
 import { getCategories } from "../services/category-service";
-import {
-  getProductsFromFireBase,
-  storeProductFromFireBase,
-  updateProductInFireBase,
-  deleteProductFromFireBase,
-} from "../services/product-service";
+import { getProductsFromFireBase, storeProductFromFireBase, updateProductInFireBase, deleteProductFromFireBase } from "../services/product-service";
 
 const { Option } = Select;
 
 const Products = () => {
-  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
-  const [detailProduct, setDetailProduct] = useState(null);
-
   const [searchText, setSearchText] = useState("");
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -47,11 +21,6 @@ const Products = () => {
     fetchProducts();
     fetchCategories();
   }, []);
-
-  const showDetailModal = (product) => {
-    setDetailProduct(product);
-    setIsDetailModalVisible(true);
-  };
 
   const fetchProducts = async () => {
     const data = await getProductsFromFireBase();
@@ -101,11 +70,6 @@ const Products = () => {
   // Hàm chuyển file thành Base64
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
-      if (!(file instanceof Blob)) {
-        reject(new Error("File không hợp lệ!"));
-        return;
-      }
-
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => resolve(reader.result);
@@ -138,16 +102,12 @@ const Products = () => {
 
       // Xử lý ảnh
       if (fileList.length > 0) {
-        if (fileList[0].originFileObj) {
-          // Nếu có file mới được upload thì chuyển sang base64
-          console.log(
-            "Converting new file to base64:",
-            fileList[0].originFileObj
-          );
-          values.imageUrl = await fileToBase64(fileList[0].originFileObj);
+        const file = fileList[0].originFileObj || fileList[0]; // Lấy file từ originFileObj hoặc file trực tiếp
+        if (file) {
+          console.log("Converting file to base64:", file);
+          values.imageUrl = await fileToBase64(file);
         } else if (isEditing && editingProduct?.imageUrl) {
-          // Nếu đang edit và không có file mới, giữ ảnh cũ
-          values.imageUrl = editingProduct.imageUrl;
+          values.imageUrl = editingProduct.imageUrl; // Giữ ảnh cũ khi chỉnh sửa
         } else {
           values.imageUrl = "";
         }
@@ -181,13 +141,8 @@ const Products = () => {
 
   const handleToggleHidden = async (product) => {
     try {
-      await updateProductInFireBase(product.id, {
-        ...product,
-        hidden: !product.hidden,
-      });
-      message.success(
-        `Sản phẩm đã được ${product.hidden ? "hiển thị" : "ẩn"} thành công`
-      );
+      await updateProductInFireBase(product.id, { ...product, hidden: !product.hidden });
+      message.success(`Sản phẩm đã được ${product.hidden ? "hiển thị" : "ẩn"} thành công`);
       fetchProducts();
     } catch (error) {
       message.error("Không thể thay đổi trạng thái hiển thị sản phẩm");
@@ -205,20 +160,14 @@ const Products = () => {
       title: "Ảnh",
       dataIndex: "imageUrl",
       key: "imageUrl",
-      render: (url) =>
-        url ? (
-          <img src={url} alt="product" style={{ width: 50 }} />
-        ) : (
-          "Không có ảnh"
-        ),
+      render: (url) => (url ? <img src={url} alt="product" style={{ width: 50 }} /> : "Không có ảnh"),
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "name",
       key: "name",
       filteredValue: [searchText],
-      onFilter: (value, record) =>
-        record.name.toLowerCase().includes(value.toLowerCase()),
+      onFilter: (value, record) => record.name.toLowerCase().includes(value.toLowerCase()),
     },
     { title: "Giá", dataIndex: "price", key: "price" },
     {
@@ -229,37 +178,19 @@ const Products = () => {
     },
     { title: "Kích thước", dataIndex: "size", key: "size" },
     { title: "Số lượng", dataIndex: "quantity", key: "quantity" },
-    {
-      title: "Trạng thái",
-      dataIndex: "status",
-      key: "status",
-      render: (status) => {
-        const color = status === "Available" ? "green" : "red";
-        const text = status === "Available" ? "Còn hàng" : "Hết hàng";
-        return <span style={{ color, fontWeight: "bold" }}>{text}</span>;
-      },
-    },
-
+    { title: "Trạng thái", dataIndex: "status", key: "status" },
     {
       title: "Hành động",
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => showDetailModal(record)}
-          >
-            Xem chi tiết
-          </Button>
           <Button icon={<EditOutlined />} onClick={() => showModal(record)} />
           <Popconfirm
-            title={`Bạn có chắc chắn muốn ${
-              record.hidden ? "hiển thị" : "ẩn"
-            } sản phẩm này?`}
+            title={`Bạn có chắc chắn muốn ${record.hidden ? "hiển thị" : "ẩn"} sản phẩm này?`}
             onConfirm={() => handleToggleHidden(record)}
           >
             <Button
-              icon={record.hidden ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+              icon={record.hidden ? <EyeOutlined /> : <EyeInvisibleOutlined />}
               danger={!record.hidden}
             >
               {record.hidden ? "Hiển thị" : "Ẩn"}
@@ -267,9 +198,7 @@ const Products = () => {
           </Popconfirm>
           <Popconfirm
             title="Bạn có chắc chắn muốn xóa sản phẩm này?"
-            onConfirm={() =>
-              deleteProductFromFireBase(record.id).then(fetchProducts)
-            }
+            onConfirm={() => deleteProductFromFireBase(record.id).then(fetchProducts)}
           >
             <Button icon={<DeleteOutlined />} danger />
           </Popconfirm>
@@ -300,11 +229,7 @@ const Products = () => {
           onChange={(e) => setSearchText(e.target.value)}
           style={{ width: 200 }}
         />
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => showModal()}
-        >
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
           Thêm sản phẩm
         </Button>
         <Button onClick={() => setShowHidden(!showHidden)}>
@@ -372,7 +297,6 @@ const Products = () => {
               <Option value="Out of Stock">Hết hàng</Option>
             </Select>
           </Form.Item>
-
           <Form.Item label="Ảnh sản phẩm">
             <Upload {...uploadProps}>
               <Button icon={<UploadOutlined />}>Tải lên ảnh</Button>
@@ -380,29 +304,6 @@ const Products = () => {
           </Form.Item>
         </Form>
       </Modal>
-      <Modal
-  title="Chi tiết sản phẩm"
-  open={isDetailModalVisible}
-  onCancel={() => setIsDetailModalVisible(false)}
-  footer={[
-    <Button key="close" onClick={() => setIsDetailModalVisible(false)}>
-      Đóng
-    </Button>,
-  ]}
->
-  {detailProduct && (
-    <div>
-      <p><strong>Tên sản phẩm:</strong> {detailProduct.name}</p>
-      <p><strong>Giá:</strong> {detailProduct.price.toLocaleString()} VND</p>
-      <p><strong>Danh mục:</strong> {getCategoryName(detailProduct.category)}</p>
-      <p><strong>Kích thước:</strong> {detailProduct.size}</p>
-      <p><strong>Số lượng:</strong> {detailProduct.quantity}</p>
-      <p><strong>Trạng thái:</strong> {detailProduct.status === "Available" ? "Còn hàng" : "Hết hàng"}</p>
-      {detailProduct.imageUrl && <img src={detailProduct.imageUrl} alt="product" style={{ width: "100%" }} />}
-    </div>
-  )}
-</Modal>
-
     </div>
   );
 };
