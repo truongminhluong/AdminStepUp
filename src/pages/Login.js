@@ -1,18 +1,35 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase/firebaseConfig";
+import { auth, db } from "../firebase/firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { Form, Input, Button, message, Typography, Card } from "antd";
-import logo from "../images/logo.jpg"; // Đảm bảo đường dẫn đúng
+import { doc, getDoc } from "firebase/firestore";
+import {
+  Form,
+  Input,
+  Button,
+  message,
+  Typography,
+  Card,
+  Divider,
+  Spin,
+} from "antd";
+import { UserOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
+import logo from "../images/logo.jpg";
+import { useAuthStore } from "../store/useAuthStore";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
   const navigate = useNavigate();
+
+  const setUser = useAuthStore((state) => state.setUser);
+  const setToken = useAuthStore((state) => state.setToken);
 
   const handleLogin = async (values) => {
     setLoading(true);
+
     try {
       const userCredential = await signInWithEmailAndPassword(
         auth,
@@ -20,28 +37,37 @@ const Login = () => {
         values.password
       );
       const user = userCredential.user;
+      console.log(user);
+      
+      if (!user) {
+        throw new Error("Vui lòng đăng nhập");
+      }
 
-      if (user?.accessToken) {
-        const access_token = user.accessToken;
-        if (!access_token) {
-          message.error("Bạn không có quyền truy cập!");
-          await auth.signOut();
-          setLoading(false);
-          return;
-        }
+      if (user) {
+        const useData = {
+          email: user.email,
+          avatar: user.photoURL,
+          name: user.displayName,
+          id: user.uid,
+        };
 
+        setToken(user.accessToken);
+        setUser(useData);
         message.success("Đăng nhập thành công!");
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("access_token", access_token);
         navigate("/dashboard");
       } else {
         message.error("Tài khoản không tồn tại!");
         await auth.signOut();
       }
     } catch (error) {
-      message.error("Email hoặc mật khẩu không đúng!");
+      console.error("Login error:", error);
+
+      message.error(
+        "Đăng nhập thất bại: " + (error.message || "Lỗi không xác định")
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -51,101 +77,112 @@ const Login = () => {
         justifyContent: "center",
         alignItems: "center",
         height: "100vh",
-        background: "linear-gradient(135deg, rgb(157, 255, 198), rgb(255, 183, 197), rgb(198, 157, 255), rgb(255, 255, 102), rgb(101, 217, 255), rgb(255, 138, 101), rgb(189, 255, 122))",
-        backgroundSize: "400% 400%",
-        animation: "gradientAnimation 10s ease infinite",
+        background: "linear-gradient(135deg, #2ecc71, #1abc9c)",
+        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
       }}
     >
-      <style>
-        {`
-          @keyframes gradientAnimation {
-            0% {
-              background-position: 0% 50%;
-            }
-            50% {
-              background-position: 100% 50%;
-            }
-            100% {
-              background-position: 0% 50%;
-            }
-          }
-        `}
-      </style>
-
       <Card
         style={{
-          width: 400,
-          padding: "30px",
-          borderRadius: "10px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-          background: "#fff",
-          textAlign: "center",
-          border: "2px solid #2ecc71",
+          width: 420,
+          padding: "30px 40px",
+          borderRadius: "12px",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+          border: "none",
         }}
       >
-        <img src={logo} alt="Logo" style={{ width: 100, marginBottom: 20 }} />
+        <div className="flex flex-col items-center">
+          <img
+            src={logo}
+            alt="Company Logo"
+            style={{
+              width: 120,
+              height: "auto",
+              marginBottom: 16,
+            }}
+            className="rounded-full"
+          />
 
-        <Title
-          level={2}
-          style={{
-            background:
-              "linear-gradient(to right, #ff9a9e, rgb(255, 225, 216), rgb(89, 246, 45))",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
+          <Title
+            level={2}
+            style={{
+              color: "#2ecc71",
+              margin: 0,
+              fontSize: "28px",
+              fontWeight: 600,
+            }}
+          >
+            Quản trị hệ thống
+          </Title>
+        </div>
+
+        <Divider style={{ marginBottom: 24 }} />
+
+        <Form
+          form={form}
+          onFinish={handleLogin}
+          layout="vertical"
+          requiredMark={false}
+          size="large"
         >
-          Admin Login
-        </Title>
-
-        <Form onFinish={handleLogin} layout="vertical">
           <Form.Item
             name="email"
-            label={<span style={{ color: "#2ecc71" }}>Email</span>}
             rules={[
-              { required: true, type: "email", message: "Please enter a valid email!" },
+              { required: true, message: "Email không được để trống!" },
+              { type: "email", message: "Email không hợp lệ!" },
             ]}
           >
             <Input
-              placeholder="Enter your email"
+              prefix={<UserOutlined style={{ color: "#bfbfbf" }} />}
+              placeholder="Email"
+              autoComplete="email"
               style={{
-                background: "#fff",
-                color: "#2ecc71",
-                border: "1px solid #2ecc71",
+                height: 50,
+                borderRadius: 6,
               }}
             />
           </Form.Item>
 
           <Form.Item
             name="password"
-            label={<span style={{ color: "#2ecc71" }}>Password</span>}
-            rules={[{ required: true, message: "Password is required!" }]}
+            rules={[
+              { required: true, message: "Mật khẩu không được để trống!" },
+              { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự!" },
+            ]}
           >
             <Input.Password
-              placeholder="Enter your password"
+              prefix={<LockOutlined style={{ color: "#bfbfbf" }} />}
+              placeholder="Mật khẩu"
+              autoComplete="current-password"
               style={{
-                background: "#fff",
-                color: "#2ecc71",
-                border: "1px solid #2ecc71",
+                height: 50,
+                borderRadius: 6,
               }}
             />
           </Form.Item>
 
-          <Form.Item>
+          <Form.Item style={{ marginTop: 30, marginBottom: 10 }}>
             <Button
               type="primary"
               htmlType="submit"
-              loading={loading}
+              icon={loading ? null : <LoginOutlined />}
               block
               style={{
+                height: 50,
+                borderRadius: 6,
                 backgroundColor: "#2ecc71",
-                border: "none",
-                fontWeight: "bold",
-                color: "#fff",
+                fontWeight: 600,
+                fontSize: "16px",
               }}
             >
-              Login
+              {loading ? <Spin size="small" /> : "Đăng nhập"}
             </Button>
           </Form.Item>
+
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              © {new Date().getFullYear()} StepUp. All rights reserved.
+            </Text>
+          </div>
         </Form>
       </Card>
     </div>

@@ -59,21 +59,19 @@ const GiftCards = () => {
 
     const handleSave = async () => {
         form.validateFields().then(async (values) => {
-            handleCancel(); // 🔹 Đóng modal ngay sau khi validate thành công
-    
             const formattedValue = values.value.toLocaleString("vi-VN");
             const formattedExpiry = values.expiry ? Timestamp.fromDate(values.expiry.toDate()) : null;
-    
+
             const dataToSave = { ...values, value: formattedValue, expiry: formattedExpiry };
-    
+
             if (editingCard) {
                 await updateDoc(doc(db, "giftCards", editingCard.id), dataToSave);
             } else {
                 await addDoc(collection(db, "giftCards"), dataToSave);
             }
+            handleCancel();
         });
     };
-    
 
     const handleDelete = async (id) => {
         await deleteDoc(doc(db, "giftCards", id));
@@ -134,4 +132,3 @@ const GiftCards = () => {
 };
 
 export default GiftCards;
- 

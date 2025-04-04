@@ -16,10 +16,9 @@ import {
   UserOutlined,
   GiftOutlined,
   BarChartOutlined,
-  LogoutOutlined,
 } from "@ant-design/icons";
 import { auth } from "./firebase/firebaseConfig";
-import HomePage from "./pages/HomePage";
+import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import Orders from "./pages/Orders";
 import Users from "./pages/Users";
@@ -31,8 +30,53 @@ import { ADMIN_UID } from "./config";
 import logo from "./images/logo.jpg";
 import Category from "./pages/Category";
 import { ToastContainer } from "react-toastify";
+import { Attribute } from "./pages/Attribute/Attribute";
 
 const { Header, Sider, Content } = Layout;
+
+const menuItems = [
+  { key: "1", icon: <HomeOutlined />, path: "/dashboard", label: "Trang chủ" },
+  {
+    key: "2",
+    icon: <ShoppingCartOutlined />,
+    path: "/categories",
+    label: "Quản lý danh mục",
+  },
+  {
+    key: "3",
+    icon: <ShoppingCartOutlined />,
+    label: "Sản phẩm",
+    children: [
+      { key: "3.1", path: "/products", label: "Danh sách sản phẩm" },
+      { key: "3.2", path: "/attributes", label: "Thuộc tính" },
+      { key: "3.3", path: "/attribute-values", label: "Giá trị thuộc tính" },
+    ],
+  },
+  {
+    key: "4",
+    icon: <OrderedListOutlined />,
+    path: "/orders",
+    label: "Quản lý đơn hàng",
+  },
+  {
+    key: "5",
+    icon: <UserOutlined />,
+    path: "/users",
+    label: "Quản lý tài khoản",
+  },
+  {
+    key: "6",
+    icon: <GiftOutlined />,
+    path: "/gift-cards",
+    label: "Quản lý thẻ quà tặng",
+  },
+  {
+    key: "7",
+    icon: <BarChartOutlined />,
+    path: "/statistics",
+    label: "Thống kê",
+  },
+];
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -54,66 +98,75 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleLogout = () => {
-    auth.signOut()
-      .then(() => {
-        localStorage.removeItem("isLoggedIn");
-        setUser(null);
-      })
-      .catch((error) => {
-        console.error("Lỗi khi đăng xuất:", error);
-      });
-  };
-
   if (loading) {
     return <div>Loading...</div>;
   }
-
-  const menuItems = [
-    { key: "1", icon: <HomeOutlined />, path: "/home", label: "Trang chủ" },
-    { key: "2", icon: <ShoppingCartOutlined />, path: "/categories", label: "Quản lý danh mục" },
-    { key: "3", icon: <ShoppingCartOutlined />, path: "/products", label: "Sản phẩm" },
-    { key: "4", icon: <OrderedListOutlined />, path: "/orders", label: "Quản lý đơn hàng" },
-    { key: "5", icon: <UserOutlined />, path: "/users", label: "Quản lý tài khoản" },
-    { key: "6", icon: <GiftOutlined />, path: "/gift-cards", label: "Quản lý thẻ quà tặng" },
-    { key: "7", icon: <BarChartOutlined />, path: "/statistics", label: "Thống kê" },
-    { key: "8", icon: <LogoutOutlined />, action: handleLogout, label: "Đăng xuất" },
-  ];
 
   return (
     <>
       <Router>
         <Routes>
-          <Route path="/login" element={!user ? <Login /> : <Navigate to="/home" />} />
+          <Route
+            path="/login"
+            element={!user ? <Login /> : <Navigate to="/dashboard" />}
+          />
           <Route
             path="/*"
             element={
               user ? (
                 <Layout style={{ minHeight: "100vh" }}>
-                  <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="dark">
-                    <div style={{ textAlign: "center", padding: collapsed ? "10px 0" : "20px 0" }}>
-                      <img
-                        src={logo}
-                        alt="Logo"
-                        style={{
-                          width: collapsed ? "20px" : "100px",
-                          height: "auto",
-                          transition: "width 0.3s",
-                        }}
-                      />
+                  <Sider
+                    collapsible
+                    collapsed={collapsed}
+                    onCollapse={setCollapsed}
+                    theme="dark"
+                  >
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: collapsed ? "10px 0" : "20px 0",
+                      }}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <img
+                          src={logo}
+                          alt="Logo"
+                          style={{
+                            width: collapsed ? "20px" : "70px",
+                            height: "auto",
+                            transition: "width 0.3s",
+                            borderRadius: "50%",
+                          }}
+                        />
+                      </div>
                     </div>
-                    <Menu theme="dark" mode="inline" defaultSelectedKeys={["1"]}>
-                      {menuItems.map((item) =>
-                        item.action ? (
-                          <Menu.Item key={item.key} icon={item.icon} onClick={item.action}>
-                            {item.label}
-                          </Menu.Item>
-                        ) : (
+                    <Menu
+                      theme="dark"
+                      mode="inline"
+                      defaultSelectedKeys={["1"]}
+                    >
+                      {menuItems.map((item) => {
+                        if (item.children) {
+                          return (
+                            <Menu.SubMenu
+                              key={item.key}
+                              icon={item.icon}
+                              title={item.label}
+                            >
+                              {item.children.map((child) => (
+                                <Menu.Item key={child.key}>
+                                  <Link to={child.path}>{child.label}</Link>
+                                </Menu.Item>
+                              ))}
+                            </Menu.SubMenu>
+                          );
+                        }
+                        return (
                           <Menu.Item key={item.key} icon={item.icon}>
                             <Link to={item.path}>{item.label}</Link>
                           </Menu.Item>
-                        )
-                      )}
+                        );
+                      })}
                     </Menu>
                   </Sider>
                   <Layout>
@@ -127,26 +180,38 @@ const App = () => {
                     >
                       {collapsed ? (
                         <MenuUnfoldOutlined
-                          style={{ fontSize: "18px", padding: "0 16px", cursor: "pointer" }}
+                          style={{
+                            fontSize: "18px",
+                            padding: "0 16px",
+                            cursor: "pointer",
+                          }}
                           onClick={() => setCollapsed(false)}
                         />
                       ) : (
                         <MenuFoldOutlined
-                          style={{ fontSize: "18px", padding: "0 16px", cursor: "pointer" }}
+                          style={{
+                            fontSize: "18px",
+                            padding: "0 16px",
+                            cursor: "pointer",
+                          }}
                           onClick={() => setCollapsed(true)}
                         />
                       )}
                     </Header>
                     <Content style={{ margin: "16px" }}>
                       <Routes>
-                        <Route path="/home" element={<HomePage />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/products" element={<Products />} />
                         <Route path="/orders" element={<Orders />} />
                         <Route path="/categories" element={<Category />} />
                         <Route path="/users" element={<Users />} />
                         <Route path="/gift-cards" element={<GiftCards />} />
                         <Route path="/statistics" element={<Statistics />} />
-                        <Route path="*" element={<Navigate to="/home" />} />
+                        <Route path="/attributes" element={<Attribute />} />
+                        <Route
+                          path="*"
+                          element={<Navigate to="/dashboard" />}
+                        />
                       </Routes>
                     </Content>
                   </Layout>
