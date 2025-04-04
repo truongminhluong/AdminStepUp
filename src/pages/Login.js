@@ -1,89 +1,188 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../firebase/firebaseConfig";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase/firebaseConfig"; // Import Firestore
+import { auth, db } from "../firebase/firebaseConfig";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { Form, Input, Button, message, Typography, Card } from "antd";
-import { ADMIN_UID } from "../config"; 
-import logo from "../images/logo.jpg"; // Thay đổi đường dẫn nếu cần
+import { doc, getDoc } from "firebase/firestore";
+import {
+  Form,
+  Input,
+  Button,
+  message,
+  Typography,
+  Card,
+  Divider,
+  Spin,
+} from "antd";
+import { UserOutlined, LockOutlined, LoginOutlined } from "@ant-design/icons";
+import logo from "../images/logo.jpg";
+import { useAuthStore } from "../store/useAuthStore";
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const Login = () => {
   const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
   const navigate = useNavigate();
+
+  const setUser = useAuthStore((state) => state.setUser);
+  const setToken = useAuthStore((state) => state.setToken);
 
   const handleLogin = async (values) => {
     setLoading(true);
+
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        values.email,
+        values.password
+      );
       const user = userCredential.user;
-  
-      // Lấy thông tin từ Firestore
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-  
-      if (userSnap.exists()) {
-        const userData = userSnap.data();
-        if (userData.role !== "admin") {
-          message.error("Bạn không có quyền truy cập!");
-          await auth.signOut();
-          setLoading(false);
-          return;
-        }
-  
+      console.log(user);
+      
+      if (!user) {
+        throw new Error("Vui lòng đăng nhập");
+      }
+
+      if (user) {
+        const useData = {
+          email: user.email,
+          avatar: user.photoURL,
+          name: user.displayName,
+          id: user.uid,
+        };
+
+        setToken(user.accessToken);
+        setUser(useData);
         message.success("Đăng nhập thành công!");
-        localStorage.setItem("isLoggedIn", "true");
         navigate("/dashboard");
       } else {
         message.error("Tài khoản không tồn tại!");
         await auth.signOut();
       }
     } catch (error) {
-      message.error("Email hoặc mật khẩu không đúng!");
+      console.error("Login error:", error);
+
+      message.error(
+        "Đăng nhập thất bại: " + (error.message || "Lỗi không xác định")
+      );
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div style={{ 
-      display: "flex", 
-      justifyContent: "center", 
-      alignItems: "center", 
-      height: "100vh", 
-      background: "linear-gradient(135deg,rgb(157, 255, 198), #fff)" 
-    }}>
-      <Card style={{ width: 400, padding: "30px", borderRadius: "10px", boxShadow: "0 4px 10px rgba(0,0,0,0.1)", background: "#fff", textAlign: "center", border: "2px solid #2ecc71" }}>
-        {/* Logo */}
-        <img src={logo} alt="Logo" style={{ width: 100, marginBottom: 20 }} />
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        background: "linear-gradient(135deg, #2ecc71, #1abc9c)",
+        fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      }}
+    >
+      <Card
+        style={{
+          width: 420,
+          padding: "30px 40px",
+          borderRadius: "12px",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+          border: "none",
+        }}
+      >
+        <div className="flex flex-col items-center">
+          <img
+            src={logo}
+            alt="Company Logo"
+            style={{
+              width: 120,
+              height: "auto",
+              marginBottom: 16,
+            }}
+            className="rounded-full"
+          />
 
-        {/* Tiêu đề */}
-        <Title level={2} style={{ color: "#2ecc71" }}>Sign In Admin Login</Title>
-
-        {/* Form đăng nhập */}
-        <Form onFinish={handleLogin} layout="vertical">
-          <Form.Item 
-            name="email" 
-            label={<span style={{ color: "#2ecc71" }}>Email</span>} 
-            rules={[{ required: true, type: "email", message: "Please enter a valid email!" }]}
+          <Title
+            level={2}
+            style={{
+              color: "#2ecc71",
+              margin: 0,
+              fontSize: "28px",
+              fontWeight: 600,
+            }}
           >
-            <Input placeholder="Enter your email" style={{ background: "#fff", color: "#2ecc71", border: "1px solid #2ecc71" }} />
+            Quản trị hệ thống
+          </Title>
+        </div>
+
+        <Divider style={{ marginBottom: 24 }} />
+
+        <Form
+          form={form}
+          onFinish={handleLogin}
+          layout="vertical"
+          requiredMark={false}
+          size="large"
+        >
+          <Form.Item
+            name="email"
+            rules={[
+              { required: true, message: "Email không được để trống!" },
+              { type: "email", message: "Email không hợp lệ!" },
+            ]}
+          >
+            <Input
+              prefix={<UserOutlined style={{ color: "#bfbfbf" }} />}
+              placeholder="Email"
+              autoComplete="email"
+              style={{
+                height: 50,
+                borderRadius: 6,
+              }}
+            />
           </Form.Item>
 
-          <Form.Item 
-            name="password" 
-            label={<span style={{ color: "#2ecc71" }}>Password</span>} 
-            rules={[{ required: true, message: "Password is required!" }]}
+          <Form.Item
+            name="password"
+            rules={[
+              { required: true, message: "Mật khẩu không được để trống!" },
+              { min: 6, message: "Mật khẩu phải có ít nhất 6 ký tự!" },
+            ]}
           >
-            <Input.Password placeholder="Enter your password" style={{ background: "#fff", color: "#2ecc71", border: "1px solid #2ecc71" }} />
+            <Input.Password
+              prefix={<LockOutlined style={{ color: "#bfbfbf" }} />}
+              placeholder="Mật khẩu"
+              autoComplete="current-password"
+              style={{
+                height: 50,
+                borderRadius: 6,
+              }}
+            />
           </Form.Item>
 
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading} block style={{ backgroundColor: "#2ecc71", border: "none", fontWeight: "bold", color: "#fff" }}>
-              Login
+          <Form.Item style={{ marginTop: 30, marginBottom: 10 }}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              icon={loading ? null : <LoginOutlined />}
+              block
+              style={{
+                height: 50,
+                borderRadius: 6,
+                backgroundColor: "#2ecc71",
+                fontWeight: 600,
+                fontSize: "16px",
+              }}
+            >
+              {loading ? <Spin size="small" /> : "Đăng nhập"}
             </Button>
           </Form.Item>
+
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <Text type="secondary" style={{ fontSize: 13 }}>
+              © {new Date().getFullYear()} StepUp. All rights reserved.
+            </Text>
+          </div>
         </Form>
       </Card>
     </div>
