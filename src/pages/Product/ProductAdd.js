@@ -184,7 +184,7 @@ const ProductAdd = () => {
       setSelectedSizeAttributes([]);
       setSelectedColorAttributes([]);
 
-      navigate("/admin/products");
+      navigate("/products");
     } catch (error) {
       message.error("Lưu sản phẩm thất bại");
       console.error("Lỗi khi lưu sản phẩm:", error);
