@@ -1,8 +1,35 @@
 import { useState, useEffect } from "react";
-import { Table, Input, Button, Space, Popconfirm, Modal, Form, Select, Upload, message } from "antd";
-import { EditOutlined, EyeOutlined, EyeInvisibleOutlined, PlusOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
-import { getCategories } from "../services/category-service";
-import { getProductsFromFireBase, storeProductFromFireBase, updateProductInFireBase, deleteProductFromFireBase } from "../services/product-service";
+import {
+  Table,
+  Input,
+  Button,
+  Space,
+  Popconfirm,
+  Modal,
+  Form,
+  Select,
+  Upload,
+  message,
+  Tag,
+} from "antd";
+import {
+  EditOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
+import { getCategories } from "../../services/category-service";
+import {
+  getProductsFromFireBase,
+  storeProductFromFireBase,
+  updateProductInFireBase,
+  deleteProductFromFireBase,
+} from "../../services/product-service";
+import { Link } from "react-router-dom";
+import { formatCurrency } from "../../lib/common";
+import { getBrands } from "../../services/brand-service";
 
 const { Option } = Select;
 
@@ -10,6 +37,7 @@ const Products = () => {
   const [searchText, setSearchText] = useState("");
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [showHidden, setShowHidden] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -20,6 +48,7 @@ const Products = () => {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    fetchBrands();
   }, []);
 
   const fetchProducts = async () => {
@@ -30,6 +59,11 @@ const Products = () => {
   const fetchCategories = async () => {
     const data = await getCategories();
     setCategories(data);
+  };
+
+  const fetchBrands = async () => {
+    const data = await getBrands();
+    setBrands(data);
   };
 
   const showModal = (product = null) => {
@@ -141,13 +175,23 @@ const Products = () => {
 
   const handleToggleHidden = async (product) => {
     try {
-      await updateProductInFireBase(product.id, { ...product, hidden: !product.hidden });
-      message.success(`Sản phẩm đã được ${product.hidden ? "hiển thị" : "ẩn"} thành công`);
+      await updateProductInFireBase(product.id, {
+        ...product,
+        hidden: !product.hidden,
+      });
+      message.success(
+        `Sản phẩm đã được ${product.hidden ? "hiển thị" : "ẩn"} thành công`
+      );
       fetchProducts();
     } catch (error) {
       message.error("Không thể thay đổi trạng thái hiển thị sản phẩm");
       console.error(error);
     }
+  };
+
+  const getBrandName = (brandId) => {
+    const brand = brands.find((bra) => bra.id === brandId);
+    return brand ? brand.brand_name : "Không xác định";
   };
 
   const getCategoryName = (categoryId) => {
@@ -157,36 +201,86 @@ const Products = () => {
 
   const columns = [
     {
+      title: "STT",
+      key: "stt",
+      render: (_, __, index) => index + 1,
+      width: 70,
+      align: "center",
+    },
+    {
+      title: "SKU",
+      dataIndex: "sku",
+      key: "sku",
+    },
+    {
       title: "Ảnh",
       dataIndex: "imageUrl",
       key: "imageUrl",
-      render: (url) => (url ? <img src={url} alt="product" style={{ width: 50 }} /> : "Không có ảnh"),
+      render: (url) =>
+        url ? (
+          <img src={url} alt="product" style={{ width: 50 }} />
+        ) : (
+          "Không có ảnh"
+        ),
     },
     {
       title: "Tên sản phẩm",
       dataIndex: "name",
       key: "name",
       filteredValue: [searchText],
-      onFilter: (value, record) => record.name.toLowerCase().includes(value.toLowerCase()),
+      onFilter: (value, record) =>
+        record.name.toLowerCase().includes(value.toLowerCase()),
     },
-    { title: "Giá", dataIndex: "price", key: "price" },
     {
-      title: "Danh mục",
-      dataIndex: "category",
-      key: "category",
-      render: (categoryId) => getCategoryName(categoryId),
+      title: "Giá",
+      dataIndex: "price",
+      key: "price",
+      render: (price) => formatCurrency(price),
     },
-    { title: "Kích thước", dataIndex: "size", key: "size" },
+    {
+      title: "Thương hiệu",
+      dataIndex: "brand",
+      key: "brand",
+      render: (brandId) => getBrandName(brandId),
+    },
     { title: "Số lượng", dataIndex: "quantity", key: "quantity" },
-    { title: "Trạng thái", dataIndex: "status", key: "status" },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      render: (status) => {
+        let color = "green";
+        let text = "Còn hàng";
+
+        switch (status) {
+          case "Unavailable":
+            color = "red";
+            text = "Hết hàng";
+            break;
+          case "Available":
+            color = "green";
+            text = "Còn hàng";
+            break;
+          default:
+            color = "default";
+            text = status;
+        }
+
+        return <Tag color={color}>{text}</Tag>;
+      },
+    },
     {
       title: "Hành động",
       key: "actions",
       render: (_, record) => (
         <Space>
-          <Button icon={<EditOutlined />} onClick={() => showModal(record)} />
+          <Link to={`/products/edit/${record.id}`}>
+            <Button icon={<EditOutlined />} type="primary" ghost />
+          </Link>
           <Popconfirm
-            title={`Bạn có chắc chắn muốn ${record.hidden ? "hiển thị" : "ẩn"} sản phẩm này?`}
+            title={`Bạn có chắc chắn muốn ${
+              record.hidden ? "hiển thị" : "ẩn"
+            } sản phẩm này?`}
             onConfirm={() => handleToggleHidden(record)}
           >
             <Button
@@ -198,7 +292,9 @@ const Products = () => {
           </Popconfirm>
           <Popconfirm
             title="Bạn có chắc chắn muốn xóa sản phẩm này?"
-            onConfirm={() => deleteProductFromFireBase(record.id).then(fetchProducts)}
+            onConfirm={() =>
+              deleteProductFromFireBase(record.id).then(fetchProducts)
+            }
           >
             <Button icon={<DeleteOutlined />} danger />
           </Popconfirm>
@@ -222,20 +318,30 @@ const Products = () => {
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <Space style={{ marginBottom: 16 }}>
-        <Input
-          placeholder="Tìm kiếm sản phẩm"
-          onChange={(e) => setSearchText(e.target.value)}
-          style={{ width: 200 }}
-        />
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => showModal()}>
-          Thêm sản phẩm
-        </Button>
-        <Button onClick={() => setShowHidden(!showHidden)}>
-          {showHidden ? "Ẩn sản phẩm bị ẩn" : "Hiển thị sản phẩm bị ẩn"}
-        </Button>
-      </Space>
+    <div className="p-4 bg-white rounded shadow-md">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold mb-4">Quản lý sản phẩm</h2>
+        <Space style={{ marginBottom: 16 }}>
+          <Input
+            placeholder="Tìm kiếm sản phẩm"
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 200 }}
+          />
+          <Link to="/products/create">
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => showModal()}
+            >
+              Thêm sản phẩm
+            </Button>
+          </Link>
+          <Button onClick={() => setShowHidden(!showHidden)}>
+            {showHidden ? "Ẩn sản phẩm bị ẩn" : "Hiển thị sản phẩm bị ẩn"}
+          </Button>
+        </Space>
+      </div>
+
       <Table
         columns={columns}
         dataSource={products.filter((p) => showHidden || !p.hidden)}
