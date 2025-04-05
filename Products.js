@@ -10,6 +10,7 @@ import {
   Select,
   Upload,
   message,
+  InputNumber,
 } from "antd";
 import { Tag } from "antd";
 import {
@@ -123,31 +124,38 @@ const Products = () => {
     try {
       const values = await form.validateFields();
 
+      // Kiểm tra ảnh mới từ fileList
       if (fileList.length > 0) {
         const file = fileList[0].originFileObj || fileList[0];
         if (file) {
           values.imageUrl = await fileToBase64(file);
         }
       } else if (isEditing && editingProduct?.imageUrl) {
+        // Sử dụng ảnh cũ nếu đang chỉnh sửa và không có ảnh mới
         values.imageUrl = editingProduct.imageUrl;
       } else {
+        // Không có ảnh và không phải chỉnh sửa, gán giá trị rỗng
         values.imageUrl = "";
       }
 
+      // Chuyển đổi giá trị số
       values.price = Number(values.price);
       values.quantity = Number(values.quantity);
       values.color = values.color || [];
 
       if (isEditing) {
+        // Chỉnh sửa sản phẩm
         await updateProductInFireBase(editingProduct.id, values);
         message.success("Cập nhật sản phẩm thành công");
       } else {
+        // Thêm mới sản phẩm
         await storeProductFromFireBase(values);
         message.success("Thêm sản phẩm thành công");
       }
 
+      // Lấy lại danh sách sản phẩm
       fetchProducts();
-      handleCancel();
+      handleCancel();  // Đóng modal
     } catch (error) {
       message.error("Lỗi khi lưu sản phẩm");
       console.error("Lỗi khi lưu sản phẩm:", error);
@@ -312,7 +320,7 @@ const Products = () => {
             label="Giá"
             rules={[{ required: true, message: "Vui lòng nhập giá" }]}
           >
-            <Input type="number" />
+            <InputNumber min={0} />
           </Form.Item>
           <Form.Item
             name="category"
@@ -339,7 +347,7 @@ const Products = () => {
             label="Số lượng"
             rules={[{ required: true, message: "Vui lòng nhập số lượng" }]}
           >
-            <Input type="number" />
+            <InputNumber min={0} />
           </Form.Item>
           <Form.Item name="status" label="Trạng thái">
             <Select>
@@ -404,20 +412,17 @@ const Products = () => {
             </p>
             <p>
               <strong>Màu sắc:</strong>{" "}
-              {detailProduct.color && detailProduct.color.length > 0
-                ? detailProduct.color.map((color) => (
-                    <Tag key={color} color={color.toLowerCase()}>
-                      {color}
-                    </Tag>
-                  ))
-                : "Không có màu"}
+              {detailProduct.color.map((color) => (
+                <Tag key={color} color={color.toLowerCase()}>
+                  {color}
+                </Tag>
+              ))}
             </p>
             {detailProduct.imageUrl && (
-              <img
-                src={detailProduct.imageUrl}
-                alt="product"
-                style={{ width: "100%" }}
-              />
+              <div>
+                <strong>Ảnh sản phẩm:</strong>
+                <img src={detailProduct.imageUrl} alt="product" style={{ width: "100%" }} />
+              </div>
             )}
           </div>
         )}
