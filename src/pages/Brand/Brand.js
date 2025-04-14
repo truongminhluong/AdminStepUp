@@ -42,7 +42,10 @@ const Brand = () => {
     setBrandLogo(brand?.logo || null);
 
     if (brand) {
-      form.setFieldsValue(brand);
+      form.setFieldsValue({
+        ...brand,
+        status: brand.status === true, // convert to boolean
+      });
     } else {
       form.resetFields();
     }
@@ -79,6 +82,7 @@ const Brand = () => {
     try {
       const brandData = {
         ...values,
+        status: Boolean(values.status), // 🔧 Đảm bảo status là boolean khi gửi đi
         logo: brandLogo,
       };
 
@@ -136,7 +140,7 @@ const Brand = () => {
       dataIndex: "status",
       key: "status",
       render: (status) =>
-        status === "active" ? (
+        status ? (
           <span style={{ color: "green" }}>Hoạt động</span>
         ) : (
           <span style={{ color: "red" }}>Tạm ngưng</span>
@@ -190,7 +194,7 @@ const Brand = () => {
           layout="vertical"
           form={form}
           onFinish={onFinish}
-          initialValues={{ status: "active" }}
+          initialValues={{ status: true }}
         >
           <Form.Item
             label="Tên thương hiệu"
@@ -229,8 +233,8 @@ const Brand = () => {
             rules={[{ required: true, message: "Vui lòng chọn trạng thái!" }]}
           >
             <Select placeholder="Chọn trạng thái">
-              <Option value="active">Hoạt động</Option>
-              <Option value="inactive">Tạm ngưng</Option>
+              <Option value={true}>Hoạt động</Option>
+              <Option value={false}>Tạm ngưng</Option>
             </Select>
           </Form.Item>
 

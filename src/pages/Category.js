@@ -24,9 +24,14 @@ const Category = () => {
         setEditingCategory(category);
         setIsModalOpen(true);
         if (category) {
-            form.setFieldsValue(category);
+            form.setFieldValue({
+                ...category,
+                status: Boolean(category.status),
+            });
+        
         } else {
             form.resetFields();
+            form.setFieldsValue({ status: true });
         }
     };
 
@@ -37,6 +42,7 @@ const Category = () => {
     };
 
     const onFinish = async (values) => {
+        console.log("Giá trị gửi lên Firebase:", values);
         try {
             if (editingCategory) {
                 await updateCategory(editingCategory.id, values);
@@ -72,7 +78,7 @@ const Category = () => {
             dataIndex: "status",
             key: "status",
             render: (status) =>
-                status === "active" ? (
+                status ? (
                     <span style={{ color: "green" }}>Hoạt động</span>
                 ) : (
                     <span style={{ color: "red" }}>Tạm ngưng</span>
@@ -116,7 +122,7 @@ const Category = () => {
                     layout="vertical"
                     form={form}
                     onFinish={onFinish}
-                    initialValues={{ status: "active" }}
+                    initialValues={{ status: true }}
                 >
                     <Form.Item
                         label="Tên danh mục"
@@ -132,9 +138,10 @@ const Category = () => {
                         rules={[{ required: true, message: "Vui lòng chọn trạng thái!" }]}
                     >
                         <Select placeholder="Chọn trạng thái">
-                            <Option value="active">Hoạt động</Option>
-                            <Option value="inactive">Tạm ngưng</Option>
+                            <Option value={true}>Hoạt động</Option>
+                            <Option value={false}>Tạm ngưng</Option>
                         </Select>
+
                     </Form.Item>
 
                     <Form.Item style={{ textAlign: "center" }}>
