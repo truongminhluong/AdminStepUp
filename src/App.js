@@ -7,19 +7,9 @@ import {
   Link,
 } from "react-router-dom";
 import { Layout, Menu } from "antd";
-import {
-  MenuUnfoldOutlined,
-  MenuFoldOutlined,
-  HomeOutlined,
-  ShoppingCartOutlined,
-  OrderedListOutlined,
-  UserOutlined,
-  GiftOutlined,
-  BarChartOutlined,
-} from "@ant-design/icons";
+import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import { auth } from "./firebase/firebaseConfig";
 import Dashboard from "./pages/Dashboard";
-import Products from "./pages/Products";
 import Orders from "./pages/Orders";
 import Users from "./pages/Users";
 import Login from "./pages/Login";
@@ -31,52 +21,17 @@ import logo from "./images/logo.jpg";
 import Category from "./pages/Category";
 import { ToastContainer } from "react-toastify";
 import { Attribute } from "./pages/Attribute/Attribute";
+import { AttributeValue } from "./pages/AttributeValue/AttributeValue";
+import Brand from "./pages/Brand/Brand";
+import ProductAdd from "./pages/Product/ProductAdd";
+import { menuItems } from "./components/MenuItem";
+import NotFound from "./pages/NotFound/NotFound";
+import ProductEdit from "./pages/Product/ProductEdit";
+import Products from "./pages/Product/Products";
+import ModalLoading from "./components/ModalLoading";
+import HeaderComponent from "./components/HeaderComponent";
 
 const { Header, Sider, Content } = Layout;
-
-const menuItems = [
-  { key: "1", icon: <HomeOutlined />, path: "/dashboard", label: "Trang chủ" },
-  {
-    key: "2",
-    icon: <ShoppingCartOutlined />,
-    path: "/categories",
-    label: "Quản lý danh mục",
-  },
-  {
-    key: "3",
-    icon: <ShoppingCartOutlined />,
-    label: "Sản phẩm",
-    children: [
-      { key: "3.1", path: "/products", label: "Danh sách sản phẩm" },
-      { key: "3.2", path: "/attributes", label: "Thuộc tính" },
-      { key: "3.3", path: "/attribute-values", label: "Giá trị thuộc tính" },
-    ],
-  },
-  {
-    key: "4",
-    icon: <OrderedListOutlined />,
-    path: "/orders",
-    label: "Quản lý đơn hàng",
-  },
-  {
-    key: "5",
-    icon: <UserOutlined />,
-    path: "/users",
-    label: "Quản lý tài khoản",
-  },
-  {
-    key: "6",
-    icon: <GiftOutlined />,
-    path: "/gift-cards",
-    label: "Quản lý thẻ quà tặng",
-  },
-  {
-    key: "7",
-    icon: <BarChartOutlined />,
-    path: "/statistics",
-    label: "Thống kê",
-  },
-];
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -99,7 +54,7 @@ const App = () => {
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <ModalLoading />;
   }
 
   return (
@@ -120,25 +75,53 @@ const App = () => {
                     collapsed={collapsed}
                     onCollapse={setCollapsed}
                     theme="dark"
+                    width={250}
+                    style={{
+                      position: "fixed",
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      zIndex: 1000,
+                    }}
                   >
                     <div
                       style={{
+                        padding: collapsed ? "15px 0" : "25px 0",
                         textAlign: "center",
-                        padding: collapsed ? "10px 0" : "20px 0",
+                        borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                        marginBottom: "10px",
+                        transition: "all 0.3s",
                       }}
                     >
-                      <div className="flex items-center justify-center gap-2">
+                      <Link
+                        to="/dashboard"
+                        className="flex items-center justify-center gap-2"
+                      >
                         <img
                           src={logo}
                           alt="Logo"
                           style={{
-                            width: collapsed ? "20px" : "70px",
+                            width: collapsed ? "40px" : "70px",
                             height: "auto",
                             transition: "width 0.3s",
                             borderRadius: "50%",
                           }}
                         />
-                      </div>
+                        {!collapsed && (
+                          <span
+                            style={{
+                              color: "#fff",
+                              fontSize: "24px",
+                              fontWeight: "bold",
+                              opacity: collapsed ? 0 : 1,
+                              transition: "opacity 0.3s",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            StepUp
+                          </span>
+                        )}
+                      </Link>
                     </div>
                     <Menu
                       theme="dark"
@@ -169,49 +152,50 @@ const App = () => {
                       })}
                     </Menu>
                   </Sider>
-                  <Layout>
-                    <Header
+                  <Layout
+                    style={{
+                      marginLeft: collapsed ? 80 : 250,
+                      transition: "margin-left 0.2s",
+                    }}
+                  >
+                    <HeaderComponent
+                      collapsed={collapsed}
+                      setCollapsed={setCollapsed}
+                    />
+
+                    <Content
                       style={{
-                        background: "#fff",
-                        padding: 0,
-                        display: "flex",
-                        alignItems: "center",
+                        margin: "80px 16px 16px 16px", 
+                        transition: "margin-left 0.3s",
                       }}
                     >
-                      {collapsed ? (
-                        <MenuUnfoldOutlined
-                          style={{
-                            fontSize: "18px",
-                            padding: "0 16px",
-                            cursor: "pointer",
-                          }}
-                          onClick={() => setCollapsed(false)}
-                        />
-                      ) : (
-                        <MenuFoldOutlined
-                          style={{
-                            fontSize: "18px",
-                            padding: "0 16px",
-                            cursor: "pointer",
-                          }}
-                          onClick={() => setCollapsed(true)}
-                        />
-                      )}
-                    </Header>
-                    <Content style={{ margin: "16px" }}>
                       <Routes>
+                        <Route
+                          path="/"
+                          element={<Navigate to="/dashboard" replace />}
+                        />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/products" element={<Products />} />
+                        <Route
+                          path="/products/create"
+                          element={<ProductAdd />}
+                        />
+                        <Route
+                          path="/products/edit/:id"
+                          element={<ProductEdit />}
+                        />
                         <Route path="/orders" element={<Orders />} />
                         <Route path="/categories" element={<Category />} />
+                        <Route path="/brands" element={<Brand />} />
                         <Route path="/users" element={<Users />} />
                         <Route path="/gift-cards" element={<GiftCards />} />
                         <Route path="/statistics" element={<Statistics />} />
                         <Route path="/attributes" element={<Attribute />} />
                         <Route
-                          path="*"
-                          element={<Navigate to="/dashboard" />}
+                          path="/attribute-values"
+                          element={<AttributeValue />}
                         />
+                        <Route path="*" element={<NotFound />} />
                       </Routes>
                     </Content>
                   </Layout>
