@@ -11,7 +11,7 @@ export const useAuthStore = create((set) => ({
 
   setUser: (user) => {
     console.log(user);
-    
+
     if (user) {
       setLocalStorage("user", user);
     } else {
@@ -22,7 +22,7 @@ export const useAuthStore = create((set) => ({
 
   setToken: (token) => {
     if (token) {
-      setLocalStorage("access_token");
+      setLocalStorage("access_token", token);
     } else {
       removeLocalStorage("access_token");
     }

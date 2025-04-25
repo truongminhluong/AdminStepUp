@@ -37,7 +37,6 @@ const Login = () => {
         values.password
       );
       const user = userCredential.user;
-      console.log(user);
       
       if (!user) {
         throw new Error("Vui lòng đăng nhập");
