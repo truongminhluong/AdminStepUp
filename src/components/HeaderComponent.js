@@ -54,7 +54,7 @@ const HeaderComponent = ({ collapsed, setCollapsed }) => {
           label: "Đăng xuất",
           icon: <LogoutOutlined />,
           onClick: handleLogout,
-          style: { color: "#ff4d4f" }, // Màu đỏ nhẹ cho nút đăng xuất
+          style: { color: "#ff4d4f" }, 
         },
       ]}
     />
@@ -101,7 +101,7 @@ const HeaderComponent = ({ collapsed, setCollapsed }) => {
           className="trigger"
         />
 
-        <h1 className="font-bold text-xl mt-2">Xin chào: {user?.name ?? ""}</h1>
+        <h1 className="font-bold text-xl mt-2">Xin chào: {user?.name ?? "Quan Tri Vien"}</h1>
       </div>
 
       {/* User Section */}
