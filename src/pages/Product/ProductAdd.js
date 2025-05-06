@@ -173,7 +173,7 @@ const ProductAdd = () => {
           })),
         };
       }
-
+      values.createdAt = new Date().toISOString(); // thêm timestamp khi tạo
       await storeProductFromFireBase(values);
       message.success("Thêm sản phẩm thành công");
 
@@ -191,6 +191,7 @@ const ProductAdd = () => {
     } finally {
       setLoading(false);
     }
+    
   };
 
   const uploadProps = {

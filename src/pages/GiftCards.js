@@ -13,6 +13,8 @@ import {
   Tag,
   Select,
 } from "antd";
+import { Popconfirm } from "antd";
+
 import {
   EditOutlined,
   CheckOutlined,
@@ -204,6 +206,11 @@ const GiftCards = () => {
       dataIndex: "code",
       key: "code",
     },
+    {
+      title: "Loại",
+      dataIndex: "type",
+      key: "type",
+    },
 
     {
       title: "Giá trị",
@@ -215,17 +222,19 @@ const GiftCards = () => {
           : "Không xác định",
     },
 
-    {
-      title: "Loại",
-      dataIndex: "type",
-      key: "type",
-    },
+    
     {
       title: "Chi tiêu tối thiểu",
       dataIndex: "minimumSpend",
       key: "minimumSpend",
-      render: (val) => val?.toLocaleString() + " VND",
+      render: (value, record) => {
+        if (record.type === "Phần trăm (%)") {
+          return "-";
+        }
+        return value ? `${value.toLocaleString()} VNĐ` : "-";
+      },
     },
+    
 
     {
       title: "Số lượng",
@@ -262,12 +271,15 @@ const GiftCards = () => {
         const isExpired =
           record.expiryDate &&
           new Date(record.expiryDate.seconds * 1000) < new Date();
-        const canEdit = !isUsed && !isExpired;
+        const canEdit = !record.isActive || isExpired;
+    
         return (
           <>
             <Tooltip
               title={
-                canEdit ? "Chỉnh sửa" : "Không thể sửa vì đã dùng hoặc hết hạn"
+                canEdit
+                  ? "Chỉnh sửa"
+                  : "Không thể sửa khi đang bật và chưa hết hạn"
               }
             >
               <Button
@@ -276,41 +288,92 @@ const GiftCards = () => {
                 disabled={!canEdit}
               />
             </Tooltip>
-            <Tooltip title={record.isActive ? "Tắt voucher" : "Bật voucher"}>
-              <Switch
-                checked={record.isActive}
-                onChange={() => toggleVoucherStatus(record)}
-                checkedChildren={<CheckOutlined style={{ color: "white" }} />}
-                unCheckedChildren=""
-                style={{
-                  marginLeft: 12,
-                  backgroundColor: record.isActive ? "#52c41a" : "red",
-                }}
-              />
-            </Tooltip>
-            {record.isActive && (
-              <Tooltip title="Xem người đã dùng">
-              <Tag
-                color="blue"
-                style={{ marginLeft: 12, cursor: "pointer" }}
-                onClick={() => {
-                  navigate("/voucher-users", {
-                    state: {
-                      code: record.code,
-                      usedBy: record.usedBy,
-                    },
-                  });
+    
+            {record.isActive ? (
+              <Tooltip title="Tắt voucher">
+                <Switch
+                  checked
+                  onChange={() => toggleVoucherStatus(record)}
+                  checkedChildren={<CheckOutlined style={{ color: "white" }} />}
+                  unCheckedChildren=""
+                  style={{
+                    marginLeft: 12,
+                    backgroundColor: "#52c41a",
+                  }}
+                />
+              </Tooltip>
+            ) : (
+              <Popconfirm
+                title="Bạn có chắc muốn bật voucher này không?"
+                okText="Bật"
+                cancelText="Hủy"
+                onConfirm={() => {
+                  const { type, value, minimumSpend } = record;
+    
+                  if (value <= 0) {
+                    message.error("Giá trị phải lớn hơn 0!");
+                    return;
+                  }
+    
+                  if (type === "Phần trăm (%)") {
+                    if (value > 100) {
+                      message.error("Phần trăm không được vượt quá 100!");
+                      return;
+                    }
+                  }
+    
+                  if (type === "Số tiền (VNĐ)") {
+                    if (minimumSpend == null) {
+                      message.error("Chi tiêu tối thiểu bắt buộc với loại Số tiền!");
+                      return;
+                    }
+                    if (value >= minimumSpend) {
+                      message.error("Giá trị phải nhỏ hơn Chi tiêu tối thiểu!");
+                      return;
+                    }
+                  }
+    
+                  // Nếu hợp lệ thì bật
+                  toggleVoucherStatus(record);
                 }}
               >
-                Đã dùng
-              </Tag>
-            </Tooltip>
-            
+                <Tooltip title="Bật voucher">
+                  <Switch
+                    checked={false}
+                    checkedChildren={<CheckOutlined style={{ color: "white" }} />}
+                    unCheckedChildren=""
+                    style={{
+                      marginLeft: 12,
+                      backgroundColor: "red",
+                    }}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            )}
+    
+            {record.isActive && (
+              <Tooltip title="Xem người đã dùng">
+                <Tag
+                  color="blue"
+                  style={{ marginLeft: 12, cursor: "pointer" }}
+                  onClick={() => {
+                    navigate("/voucher-users", {
+                      state: {
+                        code: record.code,
+                        usedBy: record.usedBy,
+                      },
+                    });
+                  }}
+                >
+                  Đã dùng
+                </Tag>
+              </Tooltip>
             )}
           </>
         );
       },
-    },
+    }
+    
   ];
 
   const viewStatistics = () => {
@@ -422,35 +485,87 @@ const GiftCards = () => {
           </Form.Item>
 
           <Form.Item
-            label="Giá trị"
-            name="value"
-            rules={[
-              { required: true, message: "Giá trị không được để trống!" },
-            ]}
-          >
-            <InputNumber min={1} style={{ width: "100%" }} />
-          </Form.Item>
-
-          <Form.Item
             label="Loại"
             name="type"
-            rules={[{ required: true, message: "Loại không được để trống!" }]}
+            rules={[{ required: true, message: "Vui lòng chọn loại voucher!" }]}
           >
-            <Select placeholder="Chọn loại...">
+            <Select onChange={(value) => form.setFieldsValue({ type: value })}>
               <Select.Option value="Phần trăm (%)">Phần trăm (%)</Select.Option>
               <Select.Option value="Số tiền (VNĐ)">Số tiền (VNĐ)</Select.Option>
             </Select>
           </Form.Item>
 
+          <Form.Item shouldUpdate={(prev, current) => prev.type !== current.type || prev.minimumSpend !== current.minimumSpend}>
+  {() => {
+    const type = form.getFieldValue("type");
+    const minSpend = form.getFieldValue("minimumSpend");
+
+    return (
+      <>
+        <Form.Item
+          label="Giá trị"
+          name="value"
+          rules={[
+            {
+              required: true,
+              message: "Giá trị không được để trống!",
+            },
+            {
+              validator: (_, value) => {
+                if (value <= 0) {
+                  return Promise.reject("Giá trị phải lớn hơn 0!");
+                }
+                if (type === "Phần trăm (%)" && value > 100) {
+                  return Promise.reject("Phần trăm không được vượt quá 100!");
+                }
+                if (type === "Số tiền (VNĐ)" && minSpend && value >= minSpend) {
+                  return Promise.reject(
+                    "Giá trị giảm phải nhỏ hơn chi tiêu tối thiểu!"
+                  );
+                }
+                return Promise.resolve();
+              },
+            },
+          ]}
+        >
+          <InputNumber
+            style={{ width: "100%" }}
+            min={1}
+            addonAfter={type === "Phần trăm (%)" ? "%" : "VNĐ"}
+          />
+        </Form.Item>
+
+        {type === "Số tiền (VNĐ)" && (
           <Form.Item
             label="Chi tiêu tối thiểu"
             name="minimumSpend"
             rules={[
-              { required: true, message: "Vui lòng nhập chi tiêu tối thiểu!" },
+              {
+                required: true,
+                message: "Chi tiêu tối thiểu là bắt buộc với loại Số tiền!",
+              },
+              {
+                type: "number",
+                min: 20000,
+                message: "Chi tiêu tối thiểu phải từ 20.000 VNĐ trở lên!",
+              },
             ]}
           >
-            <InputNumber min={0} style={{ width: "100%" }} />
+            <InputNumber
+              style={{ width: "100%" }}
+              min={20000}
+              step={1000}
+              addonAfter="VNĐ"
+            />
           </Form.Item>
+        )}
+      </>
+    );
+  }}
+</Form.Item>
+
+
+         
 
           <Form.Item
             label="Số lượng"
