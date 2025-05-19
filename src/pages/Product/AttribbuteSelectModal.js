@@ -36,6 +36,7 @@ const AttributeSelectorModal = ({
   const [selectedAttribute, setSelectedAttribute] = useState(null);
   const [selectedItems, setSelectedItems] = useState(selectedValues);
 
+
   useEffect(() => {
     if (visible) {
       fetchAttributes();
@@ -167,7 +168,7 @@ const AttributeSelectorModal = ({
         bordered
         dataSource={attributeValues}
         renderItem={(item) => {
-          const isSelected = selectedItems.some((i) => i.id === item.id);
+          const isSelected = selectedItems.some((i) => i.value === item.value);
 
           return (
             <List.Item

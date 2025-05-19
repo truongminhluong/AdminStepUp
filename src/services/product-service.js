@@ -50,60 +50,10 @@ export const getProductDetail = async (productId) => {
       )
     );
 
-    const variants = [];
-
-    for (const variantDoc of variantsQuerySnapshot.docs) {
-      const variant = {
-        id: variantDoc.id,
-        ...variantDoc.data(),
-      };
-
-      const attrQuerySnapshot = await getDocs(
-        query(
-          collection(db, "product_variant_attributes"),
-          where("product_variant_id", "==", variant.id)
-        )
-      );
-
-      const attributes = {};
-      for (const attrDoc of attrQuerySnapshot.docs) {
-        const attrData = attrDoc.data();
-
-        const attributeRef = doc(db, "attributes", attrData.attribute_id);
-        const attributeSnap = await getDoc(attributeRef);
-
-        if (attributeSnap.exists()) {
-          const attributeInfo = attributeSnap.data();
-
-          const valueRef = doc(
-            db,
-            "attribute_values",
-            attrData.attribute_value_id
-          );
-          const valueSnap = await getDoc(valueRef);
-
-          if (valueSnap.exists()) {
-            const valueInfo = valueSnap.data();
-
-            attributes[attributeInfo.type] = {
-              id: attrData.attribute_value_id,
-              value: valueInfo.value,
-              ...valueInfo,
-            };
-          }
-        }
-      }
-
-      variant.attributes = attributes;
-
-      if (attributes.size) variant.size = attributes.size.value;
-      if (attributes.color) {
-        variant.color = attributes.color.value;
-        variant.colorCode = attributes.color.colorCode || "";
-      }
-
-      variants.push(variant);
-    }
+    const variants = variantsQuerySnapshot.docs.map((variantDoc) => ({
+      id: variantDoc.id,
+      ...variantDoc.data(),
+    }));
 
     product.variants = variants;
 
@@ -113,15 +63,11 @@ export const getProductDetail = async (productId) => {
     throw error;
   }
 };
-
 export const storeProductFromFireBase = async (product) => {
   try {
     const batch = writeBatch(db);
 
     const variants = product.variants || [];
-
-    const productAttributes = product.attributes || {};
-
     const productToStore = { ...product };
     
     delete productToStore.variants;
@@ -137,111 +83,13 @@ export const storeProductFromFireBase = async (product) => {
         price: variant.price,
         quantity: variant.quantity,
         is_active: variant.isActive || true,
-        image_url: variant.imageUrl  || "",
+        image_url: variant.imageUrl || "",
+        size: variant.size || "",
+        color: variant.color || "",
+        colorCode: variant.colorCode || ""
       };
 
-      const variantRef = await addDoc(
-        collection(db, "product_variants"),
-        variantToStore
-      );
-      const variantId = variantRef.id;
-
-      if (variant.size) {
-        const sizeAttrQuerySnapshot = await getDocs(
-          query(collection(db, "attributes"), where("type", "==", "size"))
-        );
-
-        let sizeAttrId;
-        if (sizeAttrQuerySnapshot.empty) {
-          const sizeAttrRef = await addDoc(collection(db, "attributes"), {
-            name: "Size",
-            type: "size",
-          });
-          sizeAttrId = sizeAttrRef.id;
-        } else {
-          sizeAttrId = sizeAttrQuerySnapshot.docs[0].id;
-        }
-
-        const sizeValueQuerySnapshot = await getDocs(
-          query(
-            collection(db, "attribute_values"),
-            where("attribute_id", "==", sizeAttrId),
-            where("value", "==", variant.size)
-          )
-        );
-
-        let sizeValueId;
-        if (sizeValueQuerySnapshot.empty) {
-          const sizeValueRef = await addDoc(
-            collection(db, "attribute_values"),
-            {
-              attribute_id: sizeAttrId,
-              value: variant.size,
-            }
-          );
-          sizeValueId = sizeValueRef.id;
-        } else {
-          sizeValueId = sizeValueQuerySnapshot.docs[0].id;
-        }
-
-        await addDoc(collection(db, "product_variant_attributes"), {
-          product_variant_id: variantId,
-          attribute_id: sizeAttrId,
-          attribute_value_id: sizeValueId,
-        });
-      }
-
-      if (variant.color) {
-        const colorAttrQuerySnapshot = await getDocs(
-          query(collection(db, "attributes"), where("type", "==", "color"))
-        );
-
-        let colorAttrId;
-        if (colorAttrQuerySnapshot.empty) {
-          const colorAttrRef = await addDoc(collection(db, "attributes"), {
-            name: "Color",
-            type: "color",
-          });
-          colorAttrId = colorAttrRef.id;
-        } else {
-          colorAttrId = colorAttrQuerySnapshot.docs[0].id;
-        }
-
-        const colorValueQuerySnapshot = await getDocs(
-          query(
-            collection(db, "attribute_values"),
-            where("attribute_id", "==", colorAttrId),
-            where("value", "==", variant.color)
-          )
-        );
-
-        let colorValueId;
-        if (colorValueQuerySnapshot.empty) {
-          const colorValueRef = await addDoc(
-            collection(db, "attribute_values"),
-            {
-              attribute_id: colorAttrId,
-              value: variant.color,
-              colorCode: variant.colorCode || "",
-            }
-          );
-          colorValueId = colorValueRef.id;
-        } else {
-          colorValueId = colorValueQuerySnapshot.docs[0].id;
-
-          if (variant.colorCode) {
-            await updateDoc(doc(db, "attribute_values", colorValueId), {
-              colorCode: variant.colorCode,
-            });
-          }
-        }
-
-        await addDoc(collection(db, "product_variant_attributes"), {
-          product_variant_id: variantId,
-          attribute_id: colorAttrId,
-          attribute_value_id: colorValueId,
-        });
-      }
+      await addDoc(collection(db, "product_variants"), variantToStore);
     }
 
     return productId;
@@ -250,6 +98,7 @@ export const storeProductFromFireBase = async (product) => {
     throw error;
   }
 };
+
 
 export const deleteProductFromFireBase = async (id) => {
   try {
@@ -293,7 +142,7 @@ export const updateProductInFireBase = async (id, product) => {
     const variants = product.variants || [];
 
     const cleanProduct = Object.entries(product).reduce((acc, [key, value]) => {
-      if (value !== undefined && key !== "variants" && key !== "attributes") {
+      if (value !== undefined && key !== "variants") {
         acc[key] = value;
       }
       return acc;
@@ -316,329 +165,37 @@ export const updateProductInFireBase = async (id, product) => {
           sku: variant.sku,
           price: variant.price,
           quantity: variant.quantity,
-          is_active: variant.isActive || true,
-          image_url: variant.imageUrl 
+          is_active: variant.is_active !== false,
+          image_url: variant.imageUrl || "",
+          size: variant.size || "",
+          color: variant.color || "",
+          colorCode: variant.colorCode || "",
         };
 
         batch.update(variantRef, variantToUpdate);
-
-        if (variant.size || variant.color) {
-          const variantAttrQuerySnapshot = await getDocs(
-            query(
-              collection(db, "product_variant_attributes"),
-              where("product_variant_id", "==", variant.id)
-            )
-          );
-
-          const existingAttrs = {};
-          for (const attrDoc of variantAttrQuerySnapshot.docs) {
-            const attrData = attrDoc.data();
-
-            const attributeRef = doc(db, "attributes", attrData.attribute_id);
-            const attributeSnap = await getDoc(attributeRef);
-
-            if (attributeSnap.exists()) {
-              const attrType = attributeSnap.data().type;
-              existingAttrs[attrType] = {
-                relationshipId: attrDoc.id,
-                ...attrData,
-              };
-            }
-          }
-
-          if (variant.size && existingAttrs.size) {
-            const sizeValueQuerySnapshot = await getDocs(
-              query(
-                collection(db, "attribute_values"),
-                where("attribute_id", "==", existingAttrs.size.attribute_id),
-                where("value", "==", variant.size)
-              )
-            );
-
-            let sizeValueId;
-            if (sizeValueQuerySnapshot.empty) {
-              const sizeValueRef = await addDoc(
-                collection(db, "attribute_values"),
-                {
-                  attribute_id: existingAttrs.size.attribute_id,
-                  value: variant.size,
-                }
-              );
-              sizeValueId = sizeValueRef.id;
-            } else {
-              sizeValueId = sizeValueQuerySnapshot.docs[0].id;
-            }
-
-            if (sizeValueId !== existingAttrs.size.attribute_value_id) {
-              batch.update(
-                doc(
-                  db,
-                  "product_variant_attributes",
-                  existingAttrs.size.relationshipId
-                ),
-                {
-                  attribute_value_id: sizeValueId,
-                }
-              );
-            }
-          } else if (variant.size) {
-            const sizeAttrQuerySnapshot = await getDocs(
-              query(collection(db, "attributes"), where("type", "==", "size"))
-            );
-
-            let sizeAttrId;
-            if (sizeAttrQuerySnapshot.empty) {
-              const sizeAttrRef = await addDoc(collection(db, "attributes"), {
-                name: "Size",
-                type: "size",
-              });
-              sizeAttrId = sizeAttrRef.id;
-            } else {
-              sizeAttrId = sizeAttrQuerySnapshot.docs[0].id;
-            }
-
-            const sizeValueQuerySnapshot = await getDocs(
-              query(
-                collection(db, "attribute_values"),
-                where("attribute_id", "==", sizeAttrId),
-                where("value", "==", variant.size)
-              )
-            );
-
-            let sizeValueId;
-            if (sizeValueQuerySnapshot.empty) {
-              const sizeValueRef = await addDoc(
-                collection(db, "attribute_values"),
-                {
-                  attribute_id: sizeAttrId,
-                  value: variant.size,
-                }
-              );
-              sizeValueId = sizeValueRef.id;
-            } else {
-              sizeValueId = sizeValueQuerySnapshot.docs[0].id;
-            }
-
-            await addDoc(collection(db, "product_variant_attributes"), {
-              product_variant_id: variant.id,
-              attribute_id: sizeAttrId,
-              attribute_value_id: sizeValueId,
-            });
-          }
-
-          if (variant.color && existingAttrs.color) {
-            const colorValueQuerySnapshot = await getDocs(
-              query(
-                collection(db, "attribute_values"),
-                where("attribute_id", "==", existingAttrs.color.attribute_id),
-                where("value", "==", variant.color)
-              )
-            );
-
-            let colorValueId;
-            if (colorValueQuerySnapshot.empty) {
-              const colorValueRef = await addDoc(
-                collection(db, "attribute_values"),
-                {
-                  attribute_id: existingAttrs.color.attribute_id,
-                  value: variant.color,
-                  colorCode: variant.colorCode || "",
-                }
-              );
-              colorValueId = colorValueRef.id;
-            } else {
-              colorValueId = colorValueQuerySnapshot.docs[0].id;
-
-              if (variant.colorCode) {
-                await updateDoc(doc(db, "attribute_values", colorValueId), {
-                  colorCode: variant.colorCode,
-                });
-              }
-            }
-
-            if (colorValueId !== existingAttrs.color.attribute_value_id) {
-              batch.update(
-                doc(
-                  db,
-                  "product_variant_attributes",
-                  existingAttrs.color.relationshipId
-                ),
-                {
-                  attribute_value_id: colorValueId,
-                }
-              );
-            }
-          } else if (variant.color) {
-            const colorAttrQuerySnapshot = await getDocs(
-              query(collection(db, "attributes"), where("type", "==", "color"))
-            );
-
-            let colorAttrId;
-            if (colorAttrQuerySnapshot.empty) {
-              const colorAttrRef = await addDoc(collection(db, "attributes"), {
-                name: "Color",
-                type: "color",
-              });
-              colorAttrId = colorAttrRef.id;
-            } else {
-              colorAttrId = colorAttrQuerySnapshot.docs[0].id;
-            }
-
-            const colorValueQuerySnapshot = await getDocs(
-              query(
-                collection(db, "attribute_values"),
-                where("attribute_id", "==", colorAttrId),
-                where("value", "==", variant.color)
-              )
-            );
-
-            let colorValueId;
-            if (colorValueQuerySnapshot.empty) {
-              const colorValueRef = await addDoc(
-                collection(db, "attribute_values"),
-                {
-                  attribute_id: colorAttrId,
-                  value: variant.color,
-                  colorCode: variant.colorCode || "",
-                }
-              );
-              colorValueId = colorValueRef.id;
-            } else {
-              colorValueId = colorValueQuerySnapshot.docs[0].id;
-            }
-
-            await addDoc(collection(db, "product_variant_attributes"), {
-              product_variant_id: variant.id,
-              attribute_id: colorAttrId,
-              attribute_value_id: colorValueId,
-            });
-          }
-        }
-      } else if (!variant.id || (variant.id && variant.id.includes("-"))) {
+      } else {
         const variantToStore = {
           product_id: id,
           sku: variant.sku,
           price: variant.price,
           quantity: variant.quantity,
-          is_active: variant.isActive || true,
+          is_active: variant.is_active !== false,
+          image_url: variant.imageUrl || "",
+          size: variant.size || "",
+          color: variant.color || "",
+          colorCode: variant.colorCode || "",
         };
 
-        const variantRef = await addDoc(
-          collection(db, "product_variants"),
-          variantToStore
-        );
-        const variantId = variantRef.id;
-
-        if (variant.size) {
-          const sizeAttrQuerySnapshot = await getDocs(
-            query(collection(db, "attributes"), where("type", "==", "size"))
-          );
-
-          let sizeAttrId;
-          if (sizeAttrQuerySnapshot.empty) {
-            const sizeAttrRef = await addDoc(collection(db, "attributes"), {
-              name: "Size",
-              type: "size",
-            });
-            sizeAttrId = sizeAttrRef.id;
-          } else {
-            sizeAttrId = sizeAttrQuerySnapshot.docs[0].id;
-          }
-
-          const sizeValueQuerySnapshot = await getDocs(
-            query(
-              collection(db, "attribute_values"),
-              where("attribute_id", "==", sizeAttrId),
-              where("value", "==", variant.size)
-            )
-          );
-
-          let sizeValueId;
-          if (sizeValueQuerySnapshot.empty) {
-            const sizeValueRef = await addDoc(
-              collection(db, "attribute_values"),
-              {
-                attribute_id: sizeAttrId,
-                value: variant.size,
-              }
-            );
-            sizeValueId = sizeValueRef.id;
-          } else {
-            sizeValueId = sizeValueQuerySnapshot.docs[0].id;
-          }
-
-          await addDoc(collection(db, "product_variant_attributes"), {
-            product_variant_id: variantId,
-            attribute_id: sizeAttrId,
-            attribute_value_id: sizeValueId,
-          });
-        }
-
-        if (variant.color) {
-          const colorAttrQuerySnapshot = await getDocs(
-            query(collection(db, "attributes"), where("type", "==", "color"))
-          );
-
-          let colorAttrId;
-          if (colorAttrQuerySnapshot.empty) {
-            const colorAttrRef = await addDoc(collection(db, "attributes"), {
-              name: "Color",
-              type: "color",
-            });
-            colorAttrId = colorAttrRef.id;
-          } else {
-            colorAttrId = colorAttrQuerySnapshot.docs[0].id;
-          }
-
-          const colorValueQuerySnapshot = await getDocs(
-            query(
-              collection(db, "attribute_values"),
-              where("attribute_id", "==", colorAttrId),
-              where("value", "==", variant.color)
-            )
-          );
-
-          let colorValueId;
-          if (colorValueQuerySnapshot.empty) {
-            const colorValueRef = await addDoc(
-              collection(db, "attribute_values"),
-              {
-                attribute_id: colorAttrId,
-                value: variant.color,
-                colorCode: variant.colorCode || "",
-              }
-            );
-            colorValueId = colorValueRef.id;
-          } else {
-            colorValueId = colorValueQuerySnapshot.docs[0].id;
-          }
-
-          await addDoc(collection(db, "product_variant_attributes"), {
-            product_variant_id: variantId,
-            attribute_id: colorAttrId,
-            attribute_value_id: colorValueId,
-          });
-        }
+        await addDoc(collection(db, "product_variants"), variantToStore);
       }
     }
 
     const variantIdsToKeep = variants
-      .filter((v) => v.id && !v.id.includes("-"))
+      .filter((v) => v.id)
       .map((v) => v.id);
 
     for (const existingVariantId of existingVariantIds) {
       if (!variantIdsToKeep.includes(existingVariantId)) {
-        const variantAttrQuerySnapshot = await getDocs(
-          query(
-            collection(db, "product_variant_attributes"),
-            where("product_variant_id", "==", existingVariantId)
-          )
-        );
-
-        variantAttrQuerySnapshot.docs.forEach((attrDoc) => {
-          batch.delete(attrDoc.ref);
-        });
-
         batch.delete(doc(db, "product_variants", existingVariantId));
       }
     }
@@ -646,7 +203,7 @@ export const updateProductInFireBase = async (id, product) => {
     await batch.commit();
     return true;
   } catch (error) {
-    console.error("Error updating document: ", error);
+    console.error("Error updating product:", error);
     throw error;
   }
 };
