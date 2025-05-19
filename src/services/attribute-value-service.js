@@ -13,7 +13,7 @@ import { toast } from "react-toastify";
 
 export const getAttributeValues = async () => {
   try {
-    const querySnapshot = await getDocs(collection(db, "attribute-values"));
+    const querySnapshot = await getDocs(collection(db, "attribute_values"));
     const attributeValues = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -27,7 +27,7 @@ export const getAttributeValues = async () => {
 export const getAttributeValuesByAttribute = async (attributeId) => {
   try {
     const q = query(
-      collection(db, "attribute-values"),
+      collection(db, "attribute_values"),
       where("attributeId", "==", attributeId)
     );
 
@@ -45,7 +45,7 @@ export const getAttributeValuesByAttribute = async (attributeId) => {
 
 export const storeAttributeValue = async (data) => {
   try {
-    const docRef = await addDoc(collection(db, "attribute-values"), data);
+    const docRef = await addDoc(collection(db, "attribute_values"), data);
 
     if (docRef.id) {
       toast.success("Thao tác thành công");
@@ -59,7 +59,7 @@ export const storeAttributeValue = async (data) => {
 
 export const updateAttributeValue = async (id, data) => {
   try {
-    const attributeRef = doc(db, "attribute-values", id);
+    const attributeRef = doc(db, "attribute_values", id);
     await updateDoc(attributeRef, data);
     toast.success("Thao tác thành công");
   } catch (error) {
@@ -69,7 +69,7 @@ export const updateAttributeValue = async (id, data) => {
 
 export const deleteAttributeValue = async (id) => {
   try {
-    await deleteDoc(doc(db, "attribute-values", id));
+    await deleteDoc(doc(db, "attribute_values", id));
     toast.success("Thao tác thành công");
   } catch (error) {
     throw error;

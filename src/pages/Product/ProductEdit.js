@@ -151,47 +151,47 @@ const ProductEdit = () => {
       if (productData.variants && productData.variants.length > 0) {
         setHasVariants(true);
 
-        const sizes = new Set();
-        const colors = new Set();
-        const sizeAttributes = [];
-        const colorAttributes = [];
-
-        productData.variants.forEach((variant) => {
-          if (
-            variant.attributes?.size &&
-            !sizes.has(variant.attributes.size.id)
-          ) {
-            sizes.add(variant.attributes.size.id);
-            sizeAttributes.push(variant.attributes.size);
-          }
-
-          if (
-            variant.attributes?.color &&
-            !colors.has(variant.attributes.color.id)
-          ) {
-            colors.add(variant.attributes.color.id);
-            colorAttributes.push(variant.attributes.color);
-          }
-        });
-
-        setSelectedSizeAttributes(sizeAttributes);
-        setSelectedColorAttributes(colorAttributes);
         const variantsWithImageFiles = productData.variants.map((variant) => {
-          if (variant.image_url) {
-            return {
-              ...variant,
-              imageFile: {
-                uid: `${variant.id}-image`,
-                name: "variant-image.png",
-                status: "done",
-                url: variant.image_url,
-              },
-            };
-          }
-          return variant;
-        });
+        if (variant.image_url) {
+          return {
+            ...variant,
+            imageFile: {
+              uid: `${variant.id}-image`,
+              name: "variant-image.png",
+              status: "done",
+              url: variant.image_url,
+            },
+          };
+        }
+        return variant;
+      });
 
-        setVariants(variantsWithImageFiles);
+      setVariants(variantsWithImageFiles);
+
+       const uniqueSizes = [
+        ...new Map(
+          productData.variants.map((variant) => [
+            variant.size,
+            { id: variant.size, value: variant.size },
+          ])
+        ).values(),
+      ];
+
+      const uniqueColors = [
+        ...new Map(
+          productData.variants.map((variant) => [
+            variant.color,
+            {
+              id: variant.color,
+              value: variant.color,
+              colorCode: variant.colorCode || "",
+            },
+          ])
+        ).values(),
+      ];
+
+      setSelectedSizeAttributes(uniqueSizes);
+      setSelectedColorAttributes(uniqueColors);
       }
     } catch (error) {
       console.error("Lỗi khi lấy thông tin sản phẩm:", error);
