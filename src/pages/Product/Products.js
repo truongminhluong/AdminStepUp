@@ -303,7 +303,7 @@ const Products = () => {
 
   return (
     <div className="p-4 bg-white rounded shadow-md">
-      <div className="flex justify-between items-center">
+       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold mb-4">Quản lý sản phẩm</h2>
         <Space style={{ marginBottom: 16 }}>
           <Input

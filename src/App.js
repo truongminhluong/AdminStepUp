@@ -7,13 +7,11 @@ import {
   Link,
 } from "react-router-dom";
 import { Layout, Menu } from "antd";
-import { MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import { auth } from "./firebase/firebaseConfig";
 import Dashboard from "./pages/Dashboard";
-import Orders from "./pages/Orders";
+import Orders from "./pages/Order/Orders";
 import Users from "./pages/Users";
 import Login from "./pages/Login";
-import Statistics from "./pages/Statistics";
 import GiftCards from "./pages/GiftCards";
 import "antd/dist/reset.css";
 import { ADMIN_UID } from "./config";
@@ -30,6 +28,7 @@ import ProductEdit from "./pages/Product/ProductEdit";
 import Products from "./pages/Product/Products";
 import ModalLoading from "./components/ModalLoading";
 import HeaderComponent from "./components/HeaderComponent";
+import OrderDetail from "./pages/Order/OrderDetail";
 
 const { Header, Sider, Content } = Layout;
 
@@ -165,7 +164,7 @@ const App = () => {
 
                     <Content
                       style={{
-                        margin: "80px 16px 16px 16px", 
+                        margin: "80px 16px 16px 16px",
                         transition: "margin-left 0.3s",
                       }}
                     >
@@ -185,11 +184,11 @@ const App = () => {
                           element={<ProductEdit />}
                         />
                         <Route path="/orders" element={<Orders />} />
+                          <Route path="/orders/:id" element={<OrderDetail />} />
                         <Route path="/categories" element={<Category />} />
                         <Route path="/brands" element={<Brand />} />
                         <Route path="/users" element={<Users />} />
                         <Route path="/gift-cards" element={<GiftCards />} />
-                        <Route path="/statistics" element={<Statistics />} />
                         <Route path="/attributes" element={<Attribute />} />
                         <Route
                           path="/attribute-values"

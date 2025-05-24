@@ -54,3 +54,13 @@ export const formats = [
   "link",
   "image",
 ];
+
+export const formatDate = (timestamp) => {
+    return new Date(timestamp).toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };

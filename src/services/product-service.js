@@ -1,18 +1,14 @@
 import {
   addDoc,
   collection,
-  deleteDoc,
   doc,
   getDoc,
   getDocs,
-  updateDoc,
   writeBatch,
   query,
   where,
-  setDoc,
 } from "firebase/firestore";
-import { db, storage } from "../firebase/firebaseConfig";
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { db } from "../firebase/firebaseConfig";
 
 export const getProductsFromFireBase = async () => {
   try {
@@ -63,6 +59,7 @@ export const getProductDetail = async (productId) => {
     throw error;
   }
 };
+
 export const storeProductFromFireBase = async (product) => {
   try {
     const batch = writeBatch(db);
