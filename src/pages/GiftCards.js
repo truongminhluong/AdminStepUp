@@ -53,6 +53,16 @@ const GiftCards = () => {
     setPageSize(pageSize);
   };
 
+  const generateRandomCode = (length = 8) => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+  
+
   const fetchVouchers = async () => {
     setLoading(true);
     const querySnapshot = await getDocs(collection(db, "vouchers"));
@@ -251,8 +261,25 @@ const GiftCards = () => {
       title: "Hạn dùng",
       dataIndex: "expiryDate",
       key: "expiryDate",
-      render: (date) =>
-        date ? dayjs(date.seconds * 1000).format("DD/MM/YYYY") : "Không có",
+      render: (date) => {
+        if (!date) return "Không có";
+        const expiry = dayjs(date.seconds * 1000); // nếu là Firestore Timestamp
+        const now = dayjs();
+        const diffDays = expiry.diff(now, "day");
+    
+        let color = "inherit";
+        if (diffDays < 0) {
+          color = "red"; // đã hết hạn
+        } else if (diffDays <= 3) {
+          color = "orange"; // sắp hết hạn
+        }
+    
+        return (
+          <span style={{ color }}>
+            {expiry.format("DD/MM/YYYY")}
+          </span>
+        );
+      },
     },
     {
       title: "Trạng thái",
@@ -406,15 +433,19 @@ const GiftCards = () => {
             Xuất Excel
           </Button>
           <Button
-            type="primary"
-            onClick={() => {
-              setEditData(null);
-              form.resetFields();
-              setIsModalOpen(true);
-            }}
-          >
-            Thêm voucher
-          </Button>
+  type="primary"
+  onClick={() => {
+    setEditData(null);
+    form.resetFields();
+    form.setFieldsValue({
+      code: generateRandomCode(), // Set mã tự động
+    });
+    setIsModalOpen(true);
+  }}
+>
+  Thêm voucher
+</Button>
+
           <Button type="default" onClick={viewStatistics}>
             Xem Thống Kê
           </Button>
@@ -476,13 +507,13 @@ const GiftCards = () => {
         footer={null}
       >
         <Form form={form} onFinish={handleFinish} layout="vertical">
-          <Form.Item
-            label="Mã"
-            name="code"
-            rules={[{ required: true, message: "Mã không được để trống!" }]}
-          >
-            <Input />
-          </Form.Item>
+        <Form.Item
+  label="Mã"
+  name="code"
+  rules={[{ required: true, message: "Mã không được để trống!" }]}>
+  <Input disabled />
+</Form.Item>
+
 
           <Form.Item
             label="Loại"
