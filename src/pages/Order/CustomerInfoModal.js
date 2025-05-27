@@ -24,6 +24,15 @@ const CustomerInfoModal = ({
                 onFinish={onUpdate}
             >
                 <Form.Item
+                    name="name"
+                    label="Tên khách hàng"
+                    rules={[
+                        {required: true, message: 'Vui lòng nhập tên khách hàng'},
+                    ]}
+                >
+                    <Input/>
+                </Form.Item>
+                <Form.Item
                     name="email"
                     label="Email"
                     rules={[

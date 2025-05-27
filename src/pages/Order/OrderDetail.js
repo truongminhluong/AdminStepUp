@@ -53,7 +53,7 @@ const OrderDetail = () => {
             'Hoàn tất': 'success',
             'Đang xử lý': 'processing',
             'Đã hủy': 'error',
-            'Chờ xác nhận': 'warning'
+            'Chờ xử lý': 'warning'
         };
         return statusColors[status] || 'default';
     };
@@ -63,14 +63,14 @@ const OrderDetail = () => {
             'Hoàn tất': <CheckCircleOutlined/>,
             'Đang xử lý': <ClockCircleOutlined/>,
             'Đã hủy': <CloseCircleOutlined/>,
-            'Chờ xác nhận': <ExclamationCircleOutlined/>
+            'Chờ xử lý': <ExclamationCircleOutlined/>
         };
         return statusIcons[status] || <ClockCircleOutlined/>;
     };
 
     const getCurrentStep = (status) => {
         const steps = {
-            'Chờ xác nhận': 0,
+            'Chờ xử lý': 0,
             'Đang xử lý': 1,
             'Đang giao hàng': 2,
             'Hoàn tất': 3,
@@ -81,7 +81,7 @@ const OrderDetail = () => {
 
     const getAvailableStatuses = (currentStatus) => {
         const statusFlow = {
-            'Chờ xác nhận': ['Đang xử lý', 'Đã hủy'],
+            'Chờ xử lý': ['Đang xử lý', 'Đã hủy'],
             'Đang xử lý': ['Đang giao hàng', 'Đã hủy'],
             'Đang giao hàng': ['Hoàn tất'],
             'Hoàn tất': [],
@@ -92,11 +92,11 @@ const OrderDetail = () => {
 
     const getStatusMessage = (fromStatus, toStatus) => {
         const messages = {
-            'Chờ xác nhận->Đang xử lý': {
+            'Chờ xử lý->Đang xử lý': {
                 title: 'Xác nhận đơn hàng',
                 content: 'Bạn có chắc chắn muốn xác nhận đơn hàng này? Sau khi xác nhận, đơn hàng sẽ được chuyển sang trạng thái "Đang xử lý".'
             },
-            'Chờ xác nhận->Đã hủy': {
+            'Chờ xử lý->Đã hủy': {
                 title: 'Hủy đơn hàng',
                 content: 'Bạn có chắc chắn muốn hủy đơn hàng này? Hành động này không thể hoàn tác.',
                 type: 'error'
@@ -169,7 +169,8 @@ const OrderDetail = () => {
             email: order.email,
             phone: order.phone,
             address: order.address,
-            note: order.note || ''
+            note: order.note || '',
+            name: order.customerName
         });
         setCustomerModalVisible(true);
     };
@@ -180,10 +181,11 @@ const OrderDetail = () => {
             await updateOrderCustomerInfo(id, values);
             setOrder(prev => ({
                 ...prev,
+                customerName: values.name,
                 email: values.email,
                 phone: values.phone,
                 address: values.address,
-                note: values.note
+                note: values.note,
             }));
             message.success('Cập nhật thông tin khách hàng thành công!');
             setCustomerModalVisible(false);
@@ -352,7 +354,7 @@ const OrderDetail = () => {
                 ) : (
                     <Steps current={getCurrentStep(order.status)}
                            status={order.status === 'Đã hủy' ? 'error' : 'process'}>
-                        <Step title="Chờ xác nhận" icon={<ExclamationCircleOutlined/>}/>
+                        <Step title="Chờ xử lý" icon={<ExclamationCircleOutlined/>}/>
                         <Step title="Đang xử lý"/>
                         <Step title="Đang giao hàng" icon={<TruckOutlined/>}/>
                         <Step title="Hoàn tất" icon={<GiftOutlined/>}/>
@@ -407,6 +409,9 @@ const OrderDetail = () => {
                         }}
                     >
                         <Descriptions column={1} size="middle">
+                            <Descriptions.Item label={<><UserOutlined/> Tên khách hàng </>}>
+                                <Text strong>{order.customerName}</Text>
+                            </Descriptions.Item>
                             <Descriptions.Item label={<><UserOutlined/> Email</>}>
                                 <Text strong>{order.email}</Text>
                             </Descriptions.Item>

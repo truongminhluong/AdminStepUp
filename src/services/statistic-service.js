@@ -20,7 +20,7 @@ export const getDashboardStats = async () => {
 
         const totalOrders = ordersData.length;
         const completedOrders = ordersData.filter(order => order.status === "Hoàn tất").length;
-        const pendingOrders = ordersData.filter(order => order.status === "Chờ xác nhận").length;
+        const pendingOrders = ordersData.filter(order => order.status === "Chờ xử lý").length;
         const processingOrders = ordersData.filter(order => order.status === "Đang xử lý").length;
         const shippingOrders = ordersData.filter(order => order.status === "Đang giao hàng").length;
         const cancelledOrders = ordersData.filter(order => order.status === "Đã hủy").length;
