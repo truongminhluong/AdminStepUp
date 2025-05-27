@@ -163,7 +163,7 @@ const Dashboard = () => {
                 return "blue";
             case "Đang giao hàng":
                 return "cyan";
-            case "Chờ xác nhận":
+            case "Chờ xử lý":
                 return "orange";
             case "Đã hủy":
                 return "red";

@@ -2,7 +2,7 @@ import {collection, doc, getDoc, getDocs, updateDoc, arrayUnion} from "firebase/
 import {db} from "../firebase/firebaseConfig";
 
 const ORDER_STATUSES = [
-    "Chờ xác nhận",
+    "Chờ xử lý ",
     "Đang xử lý",
     "Đang giao hàng",
     "Hoàn tất",
@@ -92,6 +92,7 @@ export const updateOrderCustomerInfo = async (id, values) =>{
     try {
         const orderRef = doc(db, 'orders', id);
         await updateDoc(orderRef, {
+            customerName: values.name,
             email: values.email,
             phone: values.phone,
             address: values.address,

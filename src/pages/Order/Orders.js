@@ -23,7 +23,7 @@ const {RangePicker} = DatePicker;
 
 const getStatusColor = (status) => {
     switch (status) {
-        case "Chờ xác nhận":
+        case "Chờ xử lý":
             return "orange";
         case "Đang xử lý":
             return "blue";
@@ -188,7 +188,9 @@ const Orders = () => {
         },
     ];
 
-    const totalRevenue = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+    const totalRevenue = filteredOrders
+        .filter(order => order.status === 'Hoàn tất')
+        .reduce((sum, order) => sum + order.totalPrice, 0);
     const completedOrders = filteredOrders.filter(order => order.status === 'Hoàn tất').length;
 
     return (
@@ -296,9 +298,9 @@ const Orders = () => {
                             allowClear
                         >
                             <Select.Option value="All">Tất cả trạng thái</Select.Option>
-                            <Select.Option value="Chờ xác nhận">
+                            <Select.Option value="Chờ xử lý">
                                 <Tag color="warning" icon={<ExclamationCircleOutlined/>}>
-                                    Chờ xác nhận
+                                    Chờ xử lý
                                 </Tag>
                             </Select.Option>
                             <Select.Option value="Đang xử lý">
