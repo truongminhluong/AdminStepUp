@@ -222,13 +222,15 @@ export const getTopSellingProducts = async (limitCount = 5) => {
         orders.forEach(order => {
             if (order.items && Array.isArray(order.items)) {
                 order.items.forEach(item => {
-                    const productId = item.productId || item.id || item.name;
+                    const productId = item.product_id || item.id || item.name;
+                    console.log(item)
                     if (!productSales[productId]) {
                         productSales[productId] = {
                             productId,
-                            productName: item.name || item.productName || 'Sản phẩm không xác định',
+                            productName: item.name || item.product_name || 'Sản phẩm không xác định',
                             totalSold: 0,
-                            totalRevenue: 0
+                            totalRevenue: 0,
+                            image: item.product_image || ''
                         };
                     }
                     productSales[productId].totalSold += item.quantity || 1;

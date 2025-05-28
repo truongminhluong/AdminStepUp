@@ -285,6 +285,8 @@ const OrderDetail = () => {
 
     const availableStatuses = getAvailableStatuses(order.status);
 
+    const showEditButton = order?.status !== 'Đang giao hàng';
+
     return (
         <div style={{padding: '24px', backgroundColor: '#f5f5f5', minHeight: '100vh'}}>
             <Card
@@ -390,7 +392,8 @@ const OrderDetail = () => {
                                     </Space>
                                 </Col>
                                 <Col>
-                                    <Button
+                                    {showEditButton && (
+                                        <Button
                                         size="small"
                                         icon={<EditOutlined/>}
                                         onClick={handleEditCustomerInfo}
@@ -399,6 +402,7 @@ const OrderDetail = () => {
                                     >
                                         Chỉnh sửa
                                     </Button>
+                                    )}
                                 </Col>
                             </Row>
                         }

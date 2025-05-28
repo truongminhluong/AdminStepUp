@@ -2,7 +2,7 @@ import {collection, doc, getDoc, getDocs, updateDoc, arrayUnion} from "firebase/
 import {db} from "../firebase/firebaseConfig";
 
 const ORDER_STATUSES = [
-    "Chờ xử lý ",
+    "Chờ xử lý",
     "Đang xử lý",
     "Đang giao hàng",
     "Hoàn tất",

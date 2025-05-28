@@ -524,7 +524,12 @@ const Dashboard = () => {
                                         <List.Item.Meta
                                             avatar={
                                                 <Badge count={index + 1} style={{backgroundColor: "#1890ff"}}>
-                                                    <Avatar icon={<TrophyOutlined/>}/>
+                                                    <Avatar
+                                                        src={product.image}
+                                                        shape="square"
+                                                        size={64}
+                                                        style={{ borderRadius: "8px", objectFit: "cover" }}
+                                                    />
                                                 </Badge>
                                             }
                                             title={product.productName}
