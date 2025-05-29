@@ -1,0 +1,7 @@
+{
+    "products": [
+      { "id": 1, "name": "Nike Air Force 1", "price": "$120", "category": "Shoes", "status": "Available", "hidden": false },
+      { "id": 2, "name": "Adidas Ultraboost", "price": "$180", "category": "Shoes", "status": "Out of Stock", "hidden": false }
+    ]
+  }
+  
