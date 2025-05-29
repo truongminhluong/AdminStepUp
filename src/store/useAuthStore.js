@@ -10,8 +10,6 @@ export const useAuthStore = create((set) => ({
   token: getLocalStorage("access_token") || null,
 
   setUser: (user) => {
-    console.log(user);
-
     if (user) {
       setLocalStorage("user", user);
     } else {
@@ -31,6 +29,7 @@ export const useAuthStore = create((set) => ({
 
   logout: () => {
     removeLocalStorage("access_token");
-    set({ user: null, access_token: null });
+    removeLocalStorage("user");
+    set({ user: null, token: null });
   },
 }));

@@ -61,7 +61,6 @@ const GiftCards = () => {
     }
     return result;
   };
-  
 
   const fetchVouchers = async () => {
     setLoading(true);
@@ -226,13 +225,14 @@ const GiftCards = () => {
       title: "Giá trị",
       dataIndex: "value",
       key: "value",
-      render: (value) =>
-        typeof value === "number"
-          ? value.toLocaleString() + " VND"
-          : "Không xác định",
+      render: (value, record) => {
+        if (typeof value !== "number") return "Không xác định";
+        return record.type === "Phần trăm (%)"
+          ? `${value}%`
+          : `${value.toLocaleString()} VNĐ`;
+      },
     },
 
-    
     {
       title: "Chi tiêu tối thiểu",
       dataIndex: "minimumSpend",
@@ -244,7 +244,6 @@ const GiftCards = () => {
         return value ? `${value.toLocaleString()} VNĐ` : "-";
       },
     },
-    
 
     {
       title: "Số lượng",
@@ -266,19 +265,15 @@ const GiftCards = () => {
         const expiry = dayjs(date.seconds * 1000); // nếu là Firestore Timestamp
         const now = dayjs();
         const diffDays = expiry.diff(now, "day");
-    
+
         let color = "inherit";
         if (diffDays < 0) {
           color = "red"; // đã hết hạn
         } else if (diffDays <= 3) {
           color = "orange"; // sắp hết hạn
         }
-    
-        return (
-          <span style={{ color }}>
-            {expiry.format("DD/MM/YYYY")}
-          </span>
-        );
+
+        return <span style={{ color }}>{expiry.format("DD/MM/YYYY")}</span>;
       },
     },
     {
@@ -290,6 +285,7 @@ const GiftCards = () => {
         </span>
       ),
     },
+    //dfeiahuufau
     {
       title: "Hành động",
       key: "actions",
@@ -299,7 +295,7 @@ const GiftCards = () => {
           record.expiryDate &&
           new Date(record.expiryDate.seconds * 1000) < new Date();
         const canEdit = !record.isActive || isExpired;
-    
+
         return (
           <>
             <Tooltip
@@ -315,7 +311,7 @@ const GiftCards = () => {
                 disabled={!canEdit}
               />
             </Tooltip>
-    
+
             {record.isActive ? (
               <Tooltip title="Tắt voucher">
                 <Switch
@@ -336,22 +332,24 @@ const GiftCards = () => {
                 cancelText="Hủy"
                 onConfirm={() => {
                   const { type, value, minimumSpend } = record;
-    
+
                   if (value <= 0) {
                     message.error("Giá trị phải lớn hơn 0!");
                     return;
                   }
-    
+
                   if (type === "Phần trăm (%)") {
                     if (value > 100) {
                       message.error("Phần trăm không được vượt quá 100!");
                       return;
                     }
                   }
-    
+
                   if (type === "Số tiền (VNĐ)") {
                     if (minimumSpend == null) {
-                      message.error("Chi tiêu tối thiểu bắt buộc với loại Số tiền!");
+                      message.error(
+                        "Chi tiêu tối thiểu bắt buộc với loại Số tiền!"
+                      );
                       return;
                     }
                     if (value >= minimumSpend) {
@@ -359,7 +357,7 @@ const GiftCards = () => {
                       return;
                     }
                   }
-    
+
                   // Nếu hợp lệ thì bật
                   toggleVoucherStatus(record);
                 }}
@@ -367,7 +365,9 @@ const GiftCards = () => {
                 <Tooltip title="Bật voucher">
                   <Switch
                     checked={false}
-                    checkedChildren={<CheckOutlined style={{ color: "white" }} />}
+                    checkedChildren={
+                      <CheckOutlined style={{ color: "white" }} />
+                    }
                     unCheckedChildren=""
                     style={{
                       marginLeft: 12,
@@ -377,7 +377,7 @@ const GiftCards = () => {
                 </Tooltip>
               </Popconfirm>
             )}
-    
+
             {record.isActive && (
               <Tooltip title="Xem người đã dùng">
                 <Tag
@@ -399,8 +399,7 @@ const GiftCards = () => {
           </>
         );
       },
-    }
-    
+    },
   ];
 
   const viewStatistics = () => {
@@ -433,18 +432,18 @@ const GiftCards = () => {
             Xuất Excel
           </Button>
           <Button
-  type="primary"
-  onClick={() => {
-    setEditData(null);
-    form.resetFields();
-    form.setFieldsValue({
-      code: generateRandomCode(), // Set mã tự động
-    });
-    setIsModalOpen(true);
-  }}
->
-  Thêm voucher
-</Button>
+            type="primary"
+            onClick={() => {
+              setEditData(null);
+              form.resetFields();
+              form.setFieldsValue({
+                code: generateRandomCode(), // Set mã tự động
+              });
+              setIsModalOpen(true);
+            }}
+          >
+            Thêm voucher
+          </Button>
 
           <Button type="default" onClick={viewStatistics}>
             Xem Thống Kê
@@ -507,13 +506,13 @@ const GiftCards = () => {
         footer={null}
       >
         <Form form={form} onFinish={handleFinish} layout="vertical">
-        <Form.Item
-  label="Mã"
-  name="code"
-  rules={[{ required: true, message: "Mã không được để trống!" }]}>
-  <Input disabled />
-</Form.Item>
-
+          <Form.Item
+            label="Mã"
+            name="code"
+            rules={[{ required: true, message: "Mã không được để trống!" }]}
+          >
+            <Input disabled />
+          </Form.Item>
 
           <Form.Item
             label="Loại"
@@ -526,77 +525,87 @@ const GiftCards = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item shouldUpdate={(prev, current) => prev.type !== current.type || prev.minimumSpend !== current.minimumSpend}>
-  {() => {
-    const type = form.getFieldValue("type");
-    const minSpend = form.getFieldValue("minimumSpend");
-
-    return (
-      <>
-        <Form.Item
-          label="Giá trị"
-          name="value"
-          rules={[
-            {
-              required: true,
-              message: "Giá trị không được để trống!",
-            },
-            {
-              validator: (_, value) => {
-                if (value <= 0) {
-                  return Promise.reject("Giá trị phải lớn hơn 0!");
-                }
-                if (type === "Phần trăm (%)" && value > 100) {
-                  return Promise.reject("Phần trăm không được vượt quá 100!");
-                }
-                if (type === "Số tiền (VNĐ)" && minSpend && value >= minSpend) {
-                  return Promise.reject(
-                    "Giá trị giảm phải nhỏ hơn chi tiêu tối thiểu!"
-                  );
-                }
-                return Promise.resolve();
-              },
-            },
-          ]}
-        >
-          <InputNumber
-            style={{ width: "100%" }}
-            min={1}
-            addonAfter={type === "Phần trăm (%)" ? "%" : "VNĐ"}
-          />
-        </Form.Item>
-
-        {type === "Số tiền (VNĐ)" && (
           <Form.Item
-            label="Chi tiêu tối thiểu"
-            name="minimumSpend"
-            rules={[
-              {
-                required: true,
-                message: "Chi tiêu tối thiểu là bắt buộc với loại Số tiền!",
-              },
-              {
-                type: "number",
-                min: 20000,
-                message: "Chi tiêu tối thiểu phải từ 20.000 VNĐ trở lên!",
-              },
-            ]}
+            shouldUpdate={(prev, current) =>
+              prev.type !== current.type ||
+              prev.minimumSpend !== current.minimumSpend
+            }
           >
-            <InputNumber
-              style={{ width: "100%" }}
-              min={20000}
-              step={1000}
-              addonAfter="VNĐ"
-            />
+            {() => {
+              const type = form.getFieldValue("type");
+              const minSpend = form.getFieldValue("minimumSpend");
+
+              return (
+                <>
+                  <Form.Item
+                    label="Giá trị"
+                    name="value"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Giá trị không được để trống!",
+                      },
+                      {
+                        validator: (_, value) => {
+                          if (value <= 0) {
+                            return Promise.reject("Giá trị phải lớn hơn 0!");
+                          }
+                          if (type === "Phần trăm (%)" && value > 100) {
+                            return Promise.reject(
+                              "Phần trăm không được vượt quá 100!"
+                            );
+                          }
+                          if (
+                            type === "Số tiền (VNĐ)" &&
+                            minSpend &&
+                            value >= minSpend
+                          ) {
+                            return Promise.reject(
+                              "Giá trị giảm phải nhỏ hơn chi tiêu tối thiểu!"
+                            );
+                          }
+                          return Promise.resolve();
+                        },
+                      },
+                    ]}
+                  >
+                    <InputNumber
+                      style={{ width: "100%" }}
+                      min={1}
+                      addonAfter={type === "Phần trăm (%)" ? "%" : "VNĐ"}
+                    />
+                  </Form.Item>
+
+                  {type === "Số tiền (VNĐ)" && (
+                    <Form.Item
+                      label="Chi tiêu tối thiểu"
+                      name="minimumSpend"
+                      rules={[
+                        {
+                          required: true,
+                          message:
+                            "Chi tiêu tối thiểu là bắt buộc với loại Số tiền!",
+                        },
+                        {
+                          type: "number",
+                          min: 20000,
+                          message:
+                            "Chi tiêu tối thiểu phải từ 20.000 VNĐ trở lên!",
+                        },
+                      ]}
+                    >
+                      <InputNumber
+                        style={{ width: "100%" }}
+                        min={20000}
+                        step={1000}
+                        addonAfter="VNĐ"
+                      />
+                    </Form.Item>
+                  )}
+                </>
+              );
+            }}
           </Form.Item>
-        )}
-      </>
-    );
-  }}
-</Form.Item>
-
-
-         
 
           <Form.Item
             label="Số lượng"
