@@ -223,7 +223,7 @@ const Brand = () => {
           >
             Sửa
           </Button>
-          <Popconfirm
+          {/* <Popconfirm
             title="Xác nhận xóa thương hiệu"
             description="Bạn có chắc chắn muốn xóa thương hiệu này không?"
             icon={<ExclamationCircleOutlined style={{ color: "red" }} />}
@@ -235,7 +235,7 @@ const Brand = () => {
             <Button danger icon={<DeleteOutlined />}>
               Xóa
             </Button>
-          </Popconfirm>
+          </Popconfirm> */}
         </Space>
       ),
       width: 200,

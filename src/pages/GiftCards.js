@@ -1,697 +1,626 @@
-import React, {useState, useEffect} from 'react';
+import React, { useEffect, useState } from "react";
 import {
-    Table,
-    Button,
-    Modal,
-    Form,
-    Input,
-    Select,
-    DatePicker,
-    Card,
-    Row,
-    Col,
-    Space,
-    Tag,
-    Popconfirm,
-    message,
-    InputNumber,
-    Typography,
-    Divider,
-    Empty,
-} from 'antd';
-import {
-    PlusOutlined,
-    EditOutlined,
-    DeleteOutlined,
-    GiftOutlined,
-    DollarOutlined,
-    PercentageOutlined,
-    FilterOutlined,
-    CalendarOutlined,
-    NumberOutlined,
-    StockOutlined,
-    CheckCircleOutlined,
-    StopOutlined,
-    ExclamationCircleOutlined
-} from '@ant-design/icons';
-import dayjs from 'dayjs';
-import {addGiftCard, deleteGiftCard, subscribeToGiftCards, updateGiftCard, updateCardStatus} from "../services/girf-card-service";
-import {Calendar, Eye, Gift, Tag as TagIcon} from "lucide-react";
-import {formatCurrency} from "../lib/common";
+  Button,
+  Switch,
+  Table,
+  Modal,
+  Form,
+  Input,
+  InputNumber,
+  DatePicker,
+  message,
+  Tooltip,
+  Tag,
+  Select,
+} from "antd";
+import { Popconfirm } from "antd";
 
-const {Option} = Select;
-const { Text} = Typography;
-const {Search} = Input;
+import {
+  EditOutlined,
+  CheckOutlined,
+  FileExcelOutlined,
+  BarChartOutlined,
+} from "@ant-design/icons";
+import { db } from "../firebase/firebaseConfig";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  updateDoc,
+  doc,
+  Timestamp,
+} from "firebase/firestore";
+import * as XLSX from "xlsx";
+import dayjs from "dayjs";
+import { PieChart, Pie, Cell, Tooltip as ChartTooltip, Legend } from "recharts";
+import { useNavigate } from "react-router-dom";
 
 const GiftCards = () => {
-    const [giftCards, setGiftCards] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingCard, setEditingCard] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState('all');
-    const [filterStatus, setFilterStatus] = useState('all');
-    const [form] = Form.useForm();
-    const [discountType, setDiscountType] = useState('money');
+  const navigate = useNavigate();
+  const [vouchers, setVouchers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form] = Form.useForm();
+  const [editData, setEditData] = useState(null);
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateRange, setDateRange] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-    useEffect(() => {
-        setLoading(true);
-        const unsubscribe = subscribeToGiftCards((cards) => {
-            setGiftCards(cards);
-            setLoading(false);
-        });
-        return () => unsubscribe();
-    }, []);
+  const handlePageChange = (page, pageSize) => {
+    setCurrentPage(page);
+    setPageSize(pageSize);
+  };
 
-    const isExpired = (expiry) => {
-        return dayjs(expiry).isBefore(dayjs(), 'day');
-    };
+  const generateRandomCode = (length = 8) => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+  
 
-    const isOutOfStock = (quantity, usedQuantity = 0) => {
-        return quantity <= usedQuantity;
-    };
+  const fetchVouchers = async () => {
+    setLoading(true);
+    const querySnapshot = await getDocs(collection(db, "vouchers"));
+    const data = querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
-    const getRemainingQuantity = (quantity, usedQuantity = 0) => {
-        return Math.max(0, quantity - usedQuantity);
-    };
+    const now = new Date();
+    const nearExpiry = 3 * 24 * 60 * 60 * 1000;
 
-    const getOverallStatus = (card) => {
-        if (card.status === 'inactive') return 'inactive';
-        if (isExpired(card.expiry)) return 'expired';
-        if (isOutOfStock(card.quantity, card.usedQuantity)) return 'out_of_stock';
-        return 'active';
-    };
-
-    const showModal = (record = null) => {
-        setEditingCard(record);
-        setIsModalOpen(true);
-
-        if (record) {
-            form.setFieldsValue({
-                code: record.code,
-                type: record.type,
-                value: record.value,
-                maxDiscount: record.maxDiscount,
-                quantity: record.quantity,
-                expiry: record.expiry ? dayjs(record.expiry) : null,
-                status: record.status || 'active'
-            });
-            setDiscountType(record.type);
-        } else {
-            form.resetFields();
-            form.setFieldsValue({
-                quantity: 1,
-                status: 'active'
-            });
-            setDiscountType('money');
+    const updates = data.map(async (voucher) => {
+      if (voucher.expiryDate) {
+        const expiry = new Date(voucher.expiryDate.seconds * 1000);
+        if (expiry < now && voucher.isActive) {
+          const ref = doc(db, "vouchers", voucher.id);
+          await updateDoc(ref, { isActive: false });
+          voucher.isActive = false;
+        } else if (expiry - now < nearExpiry && voucher.isActive) {
+          message.warning(`Voucher ${voucher.code} sắp hết hạn!`);
         }
-    };
-
-    const handleCancel = () => {
-        setIsModalOpen(false);
-        setEditingCard(null);
-        form.resetFields();
-        setDiscountType('money');
-    };
-
-    const handleSubmit = async (values) => {
-        try {
-            const cardData = {
-                ...values,
-                expiry: values.expiry.format('YYYY-MM-DD'),
-                maxDiscount: values.type === 'percent' ? values.maxDiscount : null,
-                usedQuantity: editingCard ? editingCard.usedQuantity || 0 : 0,
-                status: values.status || 'active'
-            };
-
-            if (editingCard) {
-                await updateGiftCard(editingCard.id, cardData);
-                message.success('Cập nhật mã giảm giá thành công!');
-            } else {
-                await addGiftCard(cardData);
-                message.success('Thêm mã giảm giá thành công!');
-            }
-
-            handleCancel();
-        } catch (error) {
-            console.error('Error saving gift card:', error);
-            message.error('Có lỗi xảy ra khi lưu dữ liệu!');
-        }
-    };
-
-    const handleDelete = async (id) => {
-        try {
-            await deleteGiftCard(id);
-            message.success('Xóa mã giảm giá thành công!');
-        } catch (error) {
-            console.error('Error deleting gift card:', error);
-            message.error('Có lỗi xảy ra khi xóa dữ liệu!');
-        }
-    };
-
-    const handleStatusChange = async (id, newStatus) => {
-        try {
-            await updateCardStatus(id, newStatus);
-            message.success(`${newStatus === 'active' ? 'Kích hoạt' : 'Vô hiệu hóa'} mã thành công!`);
-        } catch (error) {
-            console.error('Error updating status:', error);
-            message.error('Có lỗi xảy ra khi cập nhật trạng thái!');
-        }
-    };
-
-    const filteredCards = giftCards.filter(card => {
-        const matchesSearch = card.code.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesFilter = filterType === 'all' || card.type === filterType;
-
-        let matchesStatus = true;
-        if (filterStatus === 'active') {
-            matchesStatus = getOverallStatus(card) === 'active';
-        } else if (filterStatus === 'expired') {
-            matchesStatus = getOverallStatus(card) === 'expired';
-        } else if (filterStatus === 'out_of_stock') {
-            matchesStatus = getOverallStatus(card) === 'out_of_stock';
-        } else if (filterStatus === 'inactive') {
-            matchesStatus = card.status === 'inactive';
-        }
-
-        return matchesSearch && matchesFilter && matchesStatus;
+      }
     });
 
-    const formatDate = (date) => {
-        return dayjs(date).format('DD/MM/YYYY');
-    };
+    await Promise.all(updates);
 
-    const columns = [
-        {
-            title: 'Mã giảm giá',
-            dataIndex: 'code',
-            key: 'code',
-            render: (text) => (
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                        <TagIcon className="w-4 h-4 text-blue-600"/>
-                    </div>
-                    <span className="font-mono font-semibold text-gray-900">{text}</span>
-                </div>
-            ),
-        },
-        {
-            title: 'Loại giảm giá',
-            dataIndex: 'type',
-            key: 'type',
-            render: (type) => {
-                const config = {
-                    money: { color: 'green', icon: <DollarOutlined />, text: 'Giảm tiền' },
-                    percent: { color: 'orange', icon: <PercentageOutlined />, text: 'Giảm %' }
-                };
-                const { color, icon, text } = config[type];
-                return (
-                    <Tag color={color} icon={icon}>
-                        {text}
-                    </Tag>
-                );
-            },
-        },
-        {
-            title: 'Giá trị',
-            key: 'value',
-            render: (_, record) => (
-                <div>
-                    <Text strong>
-                        {record.type === 'percent'
-                            ? `${record.value}%`
-                            : formatCurrency(record.value)
-                        }
-                    </Text>
-                    {record.type === 'percent' && record.maxDiscount && (
-                        <div>
-                            <Text type="secondary" style={{fontSize: '12px'}}>
-                                Tối đa: {formatCurrency(record.maxDiscount)}
-                            </Text>
-                        </div>
-                    )}
-                </div>
-            ),
-        },
-        {
-            title: 'Số lượng',
-            key: 'quantity',
-            render: (_, record) => {
-                const remaining = getRemainingQuantity(record.quantity, record.usedQuantity || 0);
+    data.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis?.() || 0;
+      const bTime = b.createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
 
-                return (
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <NumberOutlined style={{ color: '#666', fontSize: '12px' }} />
-                            <Text style={{ fontSize: '13px' }}>
-                                <span style={{ fontWeight: 600 }}>{remaining}</span>
-                            </Text>
-                        </div>
-                    </div>
-                );
-            },
-        },
-        {
-            title: 'Trạng thái',
-            key: 'status',
-            render: (_, record) => {
-                const overallStatus = getOverallStatus(record);
+    setVouchers(data);
+    setLoading(false);
+  };
 
-                const statusConfig = {
-                    active: { color: 'green', text: 'Hoạt động', icon: <CheckCircleOutlined /> },
-                    inactive: { color: 'default', text: 'Tạm dừng', icon: <StopOutlined /> },
-                    expired: { color: 'red', text: 'Hết hạn', icon: <ExclamationCircleOutlined /> },
-                    out_of_stock: { color: 'orange', text: 'Hết hàng', icon: <ExclamationCircleOutlined /> }
-                };
+  useEffect(() => {
+    fetchVouchers();
+  }, []);
 
-                const config = statusConfig[overallStatus];
-                return (
-                    <Tag color={config.color} icon={config.icon}>
-                        {config.text}
-                    </Tag>
-                );
-            },
-        },
-        {
-            title: 'Ngày hết hạn',
-            dataIndex: 'expiry',
-            key: 'expiry',
-            render: (date) => (
-                <Space>
-                    <CalendarOutlined style={{color: '#666'}}/>
-                    <span className="text-gray-600">{formatDate(date)}</span>
-                </Space>
-            ),
-        },
-        {
-            title: 'Hành động',
-            key: 'action',
-            render: (_, record) => {
-                const canToggleStatus = !isExpired(record.expiry) && !isOutOfStock(record.quantity, record.usedQuantity);
+  const showEditModal = (record) => {
+    setEditData(record);
+    form.setFieldsValue({
+      code: record.code,
+      value: record.value,
+      type: record.type,
+      quantity: record.quantity,
+      minimumSpend: record.minimumSpend,
+      expiryDate: record.expiryDate
+        ? dayjs(record.expiryDate.seconds * 1000)
+        : null,
+    });
 
-                return (
-                    <Space>
-                        <Button
-                            type="text"
-                            icon={<EditOutlined/>}
-                            onClick={() => showModal(record)}
-                            title="Chỉnh sửa"
-                        />
-                        {canToggleStatus && (
-                            <Popconfirm
-                                title={record.status === 'active' ? 'Tạm dừng mã giảm giá' : 'Kích hoạt mã giảm giá'}
-                                description={`Bạn có chắc chắn muốn ${record.status === 'active' ? 'tạm dừng' : 'kích hoạt'} mã này?`}
-                                onConfirm={() => handleStatusChange(record.id, record.status === 'active' ? 'inactive' : 'active')}
-                                okText={record.status === 'active' ? 'Tạm dừng' : 'Kích hoạt'}
-                                cancelText="Hủy"
-                            >
-                                <Button
-                                    type="text"
-                                    icon={record.status === 'active' ? <StopOutlined /> : <CheckCircleOutlined />}
-                                    title={record.status === 'active' ? 'Tạm dừng' : 'Kích hoạt'}
-                                />
-                            </Popconfirm>
-                        )}
-                        <Popconfirm
-                            title="Xóa mã giảm giá"
-                            description="Bạn có chắc chắn muốn xóa mã này?"
-                            onConfirm={() => handleDelete(record.id)}
-                            okText="Xóa"
-                            cancelText="Hủy"
-                            okButtonProps={{danger: true}}
-                        >
-                            <Button
-                                type="text"
-                                icon={<DeleteOutlined/>}
-                                danger
-                                title="Xóa"
-                            />
-                        </Popconfirm>
-                    </Space>
-                );
-            },
-        },
-    ];
+    setIsModalOpen(true);
+  };
 
-    const stats = {
-        total: giftCards.length,
-        active: giftCards.filter(card => getOverallStatus(card) === 'active').length,
-        expired: giftCards.filter(card => getOverallStatus(card) === 'expired').length,
-        outOfStock: giftCards.filter(card => getOverallStatus(card) === 'out_of_stock').length,
-        inactive: giftCards.filter(card => card.status === 'inactive').length,
-        money: giftCards.filter(card => card.type === 'money').length,
-        percent: giftCards.filter(card => card.type === 'percent').length,
-        totalQuantity: giftCards.reduce((sum, card) => sum + (card.quantity || 0), 0),
-        remainingQuantity: giftCards.reduce((sum, card) => sum + getRemainingQuantity(card.quantity, card.usedQuantity), 0)
-    };
+  const handleCancel = () => {
+    setIsModalOpen(false);
+    setEditData(null);
+    form.resetFields();
+  };
+
+  const handleFinish = async (values) => {
+    try {
+      const formattedValues = {
+        ...values,
+        expiryDate: values.expiryDate
+          ? Timestamp.fromDate(values.expiryDate.toDate())
+          : null,
+      };
+
+      if (editData) {
+        const voucherRef = doc(db, "vouchers", editData.id);
+        await updateDoc(voucherRef, formattedValues);
+        message.success("Cập nhật voucher thành công!");
+      } else {
+        await addDoc(collection(db, "vouchers"), {
+          ...formattedValues,
+          usedBy: [],
+          isActive: true,
+          createdAt: Timestamp.now(),
+        });
+        message.success("Thêm voucher thành công!");
+      }
+
+      fetchVouchers();
+      handleCancel();
+    } catch (error) {
+      message.error("Đã có lỗi xảy ra.");
+    }
+  };
+
+  const toggleVoucherStatus = async (record) => {
+    try {
+      const voucherRef = doc(db, "vouchers", record.id);
+      await updateDoc(voucherRef, {
+        isActive: !record.isActive,
+      });
+      message.success("Cập nhật trạng thái thành công!");
+      fetchVouchers();
+    } catch (error) {
+      message.error("Không thể cập nhật trạng thái.");
+    }
+  };
+
+  const exportToExcel = () => {
+    const data = vouchers.map(({ id, ...rest }) => rest);
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Vouchers");
+    XLSX.writeFile(workbook, "vouchers.xlsx");
+  };
+
+  const total = vouchers.length;
+  const activeCount = vouchers.filter((v) => v.isActive).length;
+  const expiredCount = vouchers.filter(
+    (v) => v.expiryDate && new Date(v.expiryDate.seconds * 1000) < new Date()
+  ).length;
+  const totalUsed = vouchers.reduce((sum, v) => sum + v.usedBy.length, 0);
+
+  const pieData = [
+    { name: "Đang hoạt động", value: activeCount },
+    { name: "Hết hạn", value: expiredCount },
+    { name: "Đã dùng", value: totalUsed },
+  ];
+
+  const COLORS = ["#52c41a", "#ff4d4f", "#1890ff"];
+
+  const filteredVouchers = vouchers.filter((v) => {
+    const matchSearch =
+      v.code.toLowerCase().includes(searchText.toLowerCase()) ||
+      v.type.toLowerCase().includes(searchText.toLowerCase());
+
+    const matchStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && v.isActive) ||
+      (statusFilter === "inactive" && !v.isActive);
+
+    const matchDate =
+      !dateRange ||
+      (v.expiryDate &&
+        dayjs(v.expiryDate.seconds * 1000).isAfter(dateRange[0], "day") &&
+        dayjs(v.expiryDate.seconds * 1000).isBefore(dateRange[1], "day"));
+
+    return matchSearch && matchStatus && matchDate;
+  });
+
+  const columns = [
+    {
+      title: "Mã",
+      dataIndex: "code",
+      key: "code",
+    },
+    {
+      title: "Loại",
+      dataIndex: "type",
+      key: "type",
+    },
+
+    {
+      title: "Giá trị",
+      dataIndex: "value",
+      key: "value",
+      render: (value) =>
+        typeof value === "number"
+          ? value.toLocaleString() + " VND"
+          : "Không xác định",
+    },
+
+    
+    {
+      title: "Chi tiêu tối thiểu",
+      dataIndex: "minimumSpend",
+      key: "minimumSpend",
+      render: (value, record) => {
+        if (record.type === "Phần trăm (%)") {
+          return "-";
+        }
+        return value ? `${value.toLocaleString()} VNĐ` : "-";
+      },
+    },
+    
+
+    {
+      title: "Số lượng",
+      dataIndex: "quantity",
+      key: "quantity",
+    },
+    {
+      title: "Đã dùng",
+      dataIndex: "usedBy",
+      key: "usedBy",
+      render: (usedBy) => usedBy.length,
+    },
+    {
+      title: "Hạn dùng",
+      dataIndex: "expiryDate",
+      key: "expiryDate",
+      render: (date) => {
+        if (!date) return "Không có";
+        const expiry = dayjs(date.seconds * 1000); // nếu là Firestore Timestamp
+        const now = dayjs();
+        const diffDays = expiry.diff(now, "day");
+    
+        let color = "inherit";
+        if (diffDays < 0) {
+          color = "red"; // đã hết hạn
+        } else if (diffDays <= 3) {
+          color = "orange"; // sắp hết hạn
+        }
+    
+        return (
+          <span style={{ color }}>
+            {expiry.format("DD/MM/YYYY")}
+          </span>
+        );
+      },
+    },
+    {
+      title: "Trạng thái",
+      key: "statusText",
+      render: (record) => (
+        <span style={{ color: record.isActive ? "#52c41a" : "red" }}>
+          {record.isActive ? "Đang hoạt động" : "Đã tắt"}
+        </span>
+      ),
+    },
+    {
+      title: "Hành động",
+      key: "actions",
+      render: (_, record) => {
+        const isUsed = record.usedBy.length > 0;
+        const isExpired =
+          record.expiryDate &&
+          new Date(record.expiryDate.seconds * 1000) < new Date();
+        const canEdit = !record.isActive || isExpired;
+    
+        return (
+          <>
+            <Tooltip
+              title={
+                canEdit
+                  ? "Chỉnh sửa"
+                  : "Không thể sửa khi đang bật và chưa hết hạn"
+              }
+            >
+              <Button
+                icon={<EditOutlined />}
+                onClick={() => showEditModal(record)}
+                disabled={!canEdit}
+              />
+            </Tooltip>
+    
+            {record.isActive ? (
+              <Tooltip title="Tắt voucher">
+                <Switch
+                  checked
+                  onChange={() => toggleVoucherStatus(record)}
+                  checkedChildren={<CheckOutlined style={{ color: "white" }} />}
+                  unCheckedChildren=""
+                  style={{
+                    marginLeft: 12,
+                    backgroundColor: "#52c41a",
+                  }}
+                />
+              </Tooltip>
+            ) : (
+              <Popconfirm
+                title="Bạn có chắc muốn bật voucher này không?"
+                okText="Bật"
+                cancelText="Hủy"
+                onConfirm={() => {
+                  const { type, value, minimumSpend } = record;
+    
+                  if (value <= 0) {
+                    message.error("Giá trị phải lớn hơn 0!");
+                    return;
+                  }
+    
+                  if (type === "Phần trăm (%)") {
+                    if (value > 100) {
+                      message.error("Phần trăm không được vượt quá 100!");
+                      return;
+                    }
+                  }
+    
+                  if (type === "Số tiền (VNĐ)") {
+                    if (minimumSpend == null) {
+                      message.error("Chi tiêu tối thiểu bắt buộc với loại Số tiền!");
+                      return;
+                    }
+                    if (value >= minimumSpend) {
+                      message.error("Giá trị phải nhỏ hơn Chi tiêu tối thiểu!");
+                      return;
+                    }
+                  }
+    
+                  // Nếu hợp lệ thì bật
+                  toggleVoucherStatus(record);
+                }}
+              >
+                <Tooltip title="Bật voucher">
+                  <Switch
+                    checked={false}
+                    checkedChildren={<CheckOutlined style={{ color: "white" }} />}
+                    unCheckedChildren=""
+                    style={{
+                      marginLeft: 12,
+                      backgroundColor: "red",
+                    }}
+                  />
+                </Tooltip>
+              </Popconfirm>
+            )}
+    
+            {record.isActive && (
+              <Tooltip title="Xem người đã dùng">
+                <Tag
+                  color="blue"
+                  style={{ marginLeft: 12, cursor: "pointer" }}
+                  onClick={() => {
+                    navigate("/voucher-users", {
+                      state: {
+                        code: record.code,
+                        usedBy: record.usedBy,
+                      },
+                    });
+                  }}
+                >
+                  Đã dùng
+                </Tag>
+              </Tooltip>
+            )}
+          </>
+        );
+      },
+    }
+    
+  ];
+
+  const viewStatistics = () => {
+    navigate("/voucher-stats", {
+      state: {
+        total,
+        activeCount,
+        expiredCount,
+        totalUsed,
+      },
+    });
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 16,
+        }}
+      >
+        <h2>Quản lý thẻ quà tặng</h2>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button icon={<BarChartOutlined />} disabled>
+            Tổng: {total} | Hoạt động: {activeCount} | Hết hạn: {expiredCount} |
+            Dùng: {totalUsed}
+          </Button>
+          <Button icon={<FileExcelOutlined />} onClick={exportToExcel}>
+            Xuất Excel
+          </Button>
+          <Button
+  type="primary"
+  onClick={() => {
+    setEditData(null);
+    form.resetFields();
+    form.setFieldsValue({
+      code: generateRandomCode(), // Set mã tự động
+    });
+    setIsModalOpen(true);
+  }}
+>
+  Thêm voucher
+</Button>
+
+          <Button type="default" onClick={viewStatistics}>
+            Xem Thống Kê
+          </Button>
+        </div>
+      </div>
+
+      <div
+        style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap" }}
+      >
+        <Input
+          placeholder="Tìm theo mã hoặc loại"
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          style={{ width: 200 }}
+        />
+        <Select
+          value={statusFilter}
+          onChange={setStatusFilter}
+          style={{ width: 150 }}
+        >
+          <Select.Option value="all">Tất cả</Select.Option>
+          <Select.Option value="active">Đang hoạt động</Select.Option>
+          <Select.Option value="inactive">Đã tắt</Select.Option>
+        </Select>
+        <DatePicker.RangePicker
+          format="DD/MM/YYYY"
+          onChange={(range) => setDateRange(range)}
+        />
+      </div>
+
+      <Table
+        rowKey="id"
+        loading={loading}
+        dataSource={filteredVouchers}
+        columns={columns}
+        pagination={{
+          current: currentPage,
+          pageSize: pageSize,
+          total: filteredVouchers.length,
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "50", "100"],
+          onChange: handlePageChange,
+          onShowSizeChange: (current, size) => {
+            setPageSize(size);
+            setCurrentPage(current);
+          },
+          showTotal: (total) => `Tổng ${total} mục`,
+          position: ["bottomLeft"],
+        }}
+        scroll={{ y: 1000 }}
+        sticky
+        forceRender
+      />
+
+      <Modal
+        title={editData ? "Chỉnh sửa Voucher" : "Thêm Voucher"}
+        open={isModalOpen}
+        onCancel={handleCancel}
+        footer={null}
+      >
+        <Form form={form} onFinish={handleFinish} layout="vertical">
+        <Form.Item
+  label="Mã"
+  name="code"
+  rules={[{ required: true, message: "Mã không được để trống!" }]}>
+  <Input disabled />
+</Form.Item>
+
+
+          <Form.Item
+            label="Loại"
+            name="type"
+            rules={[{ required: true, message: "Vui lòng chọn loại voucher!" }]}
+          >
+            <Select onChange={(value) => form.setFieldsValue({ type: value })}>
+              <Select.Option value="Phần trăm (%)">Phần trăm (%)</Select.Option>
+              <Select.Option value="Số tiền (VNĐ)">Số tiền (VNĐ)</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item shouldUpdate={(prev, current) => prev.type !== current.type || prev.minimumSpend !== current.minimumSpend}>
+  {() => {
+    const type = form.getFieldValue("type");
+    const minSpend = form.getFieldValue("minimumSpend");
 
     return (
-        <div style={{padding: '24px', background: '#f0f2f5', minHeight: '100vh'}}>
-            <div style={{maxWidth: '1400px', margin: '0 auto'}}>
-                <h1 className="text-3xl mb-8 font-bold text-gray-900 mb-2">Quản lý thẻ quà tặng</h1>
+      <>
+        <Form.Item
+          label="Giá trị"
+          name="value"
+          rules={[
+            {
+              required: true,
+              message: "Giá trị không được để trống!",
+            },
+            {
+              validator: (_, value) => {
+                if (value <= 0) {
+                  return Promise.reject("Giá trị phải lớn hơn 0!");
+                }
+                if (type === "Phần trăm (%)" && value > 100) {
+                  return Promise.reject("Phần trăm không được vượt quá 100!");
+                }
+                if (type === "Số tiền (VNĐ)" && minSpend && value >= minSpend) {
+                  return Promise.reject(
+                    "Giá trị giảm phải nhỏ hơn chi tiêu tối thiểu!"
+                  );
+                }
+                return Promise.resolve();
+              },
+            },
+          ]}
+        >
+          <InputNumber
+            style={{ width: "100%" }}
+            min={1}
+            addonAfter={type === "Phần trăm (%)" ? "%" : "VNĐ"}
+          />
+        </Form.Item>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Tổng số thẻ</p>
-                                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                            </div>
-                            <div className="p-3 bg-blue-100 rounded-lg">
-                                <Gift className="w-6 h-6 text-blue-600"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Đang hoạt động</p>
-                                <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-                            </div>
-                            <div className="p-3 bg-green-100 rounded-lg">
-                                <Eye className="w-6 h-6 text-green-600"/>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">Đã hết hạn</p>
-                                <p className="text-2xl font-bold text-red-600">{stats.expired}</p>
-                            </div>
-                            <div className="p-3 bg-red-100 rounded-lg">
-                                <Calendar className="w-6 h-6 text-red-600"/>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <Card style={{marginBottom: '24px'}}>
-                    <Row gutter={[16, 16]} align="middle">
-                        <Col xs={24} sm={12} md={6}>
-                            <Search
-                                placeholder="Tìm kiếm mã giảm giá..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                style={{width: '100%'}}
-                            />
-                        </Col>
-                        <Col xs={24} sm={12} md={4}>
-                            <Select
-                                placeholder="Lọc theo loại"
-                                value={filterType}
-                                onChange={setFilterType}
-                                style={{width: '100%'}}
-                                suffixIcon={<FilterOutlined/>}
-                            >
-                                <Option value="all">Tất cả loại</Option>
-                                <Option value="money">Giảm tiền</Option>
-                                <Option value="percent">Giảm %</Option>
-                            </Select>
-                        </Col>
-                        <Col xs={24} sm={12} md={5}>
-                            <Select
-                                placeholder="Lọc theo trạng thái"
-                                value={filterStatus}
-                                onChange={setFilterStatus}
-                                style={{width: '100%'}}
-                                suffixIcon={<FilterOutlined/>}
-                            >
-                                <Option value="all">Tất cả trạng thái</Option>
-                                <Option value="active">Hoạt động</Option>
-                                <Option value="inactive">Tạm dừng</Option>
-                                <Option value="expired">Hết hạn</Option>
-                                <Option value="out_of_stock">Hết hàng</Option>
-                            </Select>
-                        </Col>
-                        <Col xs={24} sm={24} md={9}>
-                            <div style={{textAlign: 'right'}}>
-                                <Space>
-                                    <Button
-                                        type="primary"
-                                        icon={<PlusOutlined/>}
-                                        onClick={() => showModal()}
-                                    >
-                                        Thêm mã mới
-                                    </Button>
-                                </Space>
-                            </div>
-                        </Col>
-                    </Row>
-                </Card>
-
-                {/* Table */}
-                <Card>
-                    <Table
-                        columns={columns}
-                        dataSource={filteredCards}
-                        loading={loading}
-                        rowKey="id"
-                        scroll={{ x: 1200 }}
-                        pagination={{
-                            pageSize: 10,
-                            showSizeChanger: true,
-                            showQuickJumper: true,
-                            showTotal: (total, range) =>
-                                `${range[0]}-${range[1]} của ${total} mục`,
-                        }}
-                        locale={{
-                            emptyText: (
-                                <Empty
-                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                    description="Không tìm thấy mã giảm giá nào"
-                                />
-                            )
-                        }}
-                    />
-                </Card>
-
-                {/* Modal */}
-                <Modal
-                    title={
-                        <Space>
-                            <GiftOutlined/>
-                            {editingCard ? 'Chỉnh sửa mã giảm giá' : 'Thêm mã giảm giá mới'}
-                        </Space>
-                    }
-                    open={isModalOpen}
-                    onCancel={handleCancel}
-                    footer={null}
-                    width={600}
-                >
-                    <Divider/>
-                    <Form
-                        form={form}
-                        layout="vertical"
-                        onFinish={handleSubmit}
-                        initialValues={{
-                            type: 'money',
-                            quantity: 1,
-                            status: 'active'
-                        }}
-                    >
-                        <Form.Item
-                            name="code"
-                            label="Mã giảm giá"
-                            rules={[
-                                {required: true, message: 'Vui lòng nhập mã giảm giá!'},
-                                {min: 3, message: 'Mã phải có ít nhất 3 ký tự!'}
-                            ]}
-                        >
-                            <Input
-                                placeholder="Nhập mã giảm giá (VD: DISCOUNT50K)"
-                                prefix={<GiftOutlined/>}
-                            />
-                        </Form.Item>
-
-                        <Row gutter={16}>
-                            <Col span={8}>
-                                <Form.Item
-                                    name="type"
-                                    label="Loại giảm giá"
-                                    rules={[{required: true, message: 'Vui lòng chọn loại giảm giá!'}]}
-                                >
-                                    <Select
-                                        placeholder="Chọn loại giảm giá"
-                                        onChange={(value) => {
-                                            setDiscountType(value);
-                                            form.setFieldsValue({maxDiscount: undefined});
-                                        }}
-                                    >
-                                        <Option value="money">
-                                            <Space>
-                                                <DollarOutlined style={{color: '#52c41a'}}/>
-                                                Giảm tiền
-                                            </Space>
-                                        </Option>
-                                        <Option value="percent">
-                                            <Space>
-                                                <PercentageOutlined style={{color: '#fa8c16'}}/>
-                                                Giảm %
-                                            </Space>
-                                        </Option>
-                                    </Select>
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item
-                                    name="quantity"
-                                    label="Số lượng"
-                                    rules={[
-                                        {required: true, message: 'Vui lòng nhập số lượng!'},
-                                        {type: 'number', min: 1, message: 'Số lượng phải lớn hơn 0!'}
-                                    ]}
-                                >
-                                    <InputNumber
-                                        style={{width: '100%'}}
-                                        placeholder="Nhập số lượng"
-                                        prefix={<NumberOutlined/>}
-                                        min={editingCard ? (editingCard.usedQuantity || 0) : 1}
-                                    />
-                                </Form.Item>
-                            </Col>
-                            <Col span={8}>
-                                <Form.Item
-                                    name="status"
-                                    label="Trạng thái"
-                                    rules={[{required: true, message: 'Vui lòng chọn trạng thái!'}]}
-                                >
-                                    <Select placeholder="Chọn trạng thái">
-                                        <Option value="active">
-                                            <Space>
-                                                <CheckCircleOutlined style={{color: '#52c41a'}}/>
-                                                Hoạt động
-                                            </Space>
-                                        </Option>
-                                        <Option value="inactive">
-                                            <Space>
-                                                <StopOutlined style={{color: '#666'}}/>
-                                                Tạm dừng
-                                            </Space>
-                                        </Option>
-                                    </Select>
-                                </Form.Item>
-                            </Col>
-                        </Row>
-
-                        {editingCard && editingCard.usedQuantity > 0 && (
-                            <div style={{
-                                padding: '12px',
-                                background: '#f6ffed',
-                                border: '1px solid #b7eb8f',
-                                borderRadius: '6px',
-                                marginBottom: '16px'
-                            }}>
-                                <Text type="secondary" style={{ fontSize: '13px' }}>
-                                    <StockOutlined style={{ marginRight: '4px' }} />
-                                    Đã sử dụng: {editingCard.usedQuantity} / Tối thiểu phải để: {editingCard.usedQuantity}
-                                </Text>
-                            </div>
-                        )}
-
-                        <Form.Item
-                            name="value"
-                            label={
-                                discountType === 'percent'
-                                    ? 'Phần trăm giảm (%)'
-                                    : 'Số tiền giảm (VND)'
-                            }
-                            rules={[
-                                {required: true, message: 'Vui lòng nhập giá trị!'},
-                                {
-                                    type: 'number',
-                                    min: 1,
-                                    message: discountType === 'percent'
-                                        ? 'Phần trăm phải lớn hơn 0!'
-                                        : 'Số tiền phải lớn hơn 0!'
-                                },
-                                discountType === 'percent' && {
-                                    type: 'number',
-                                    max: 100,
-                                    message: 'Phần trăm không được vượt quá 100!'
-                                }
-                            ].filter(Boolean)}
-                        >
-                            <InputNumber
-                                style={{width: '100%'}}
-                                placeholder={
-                                    discountType === 'percent'
-                                        ? 'Nhập phần trăm (VD: 20)'
-                                        : 'Nhập số tiền (VD: 50000)'
-                                }
-                                formatter={
-                                    discountType === 'percent'
-                                        ? value => `${value}%`
-                                        : value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-                                }
-                                parser={
-                                    discountType === 'percent'
-                                        ? value => value.replace('%', '')
-                                        : value => value.replace(/\$\s?|(,*)/g, '')
-                                }
-                            />
-                        </Form.Item>
-
-                        {discountType === 'percent' && (
-                            <Form.Item
-                                name="maxDiscount"
-                                label="Số tiền giảm tối đa (VND)"
-                                rules={[
-                                    {required: true, message: 'Vui lòng nhập số tiền giảm tối đa!'},
-                                    {type: 'number', min: 1000, message: 'Số tiền tối đa phải ít nhất 1,000 VND!'}
-                                ]}
-                            >
-                                <InputNumber
-                                    style={{width: '100%'}}
-                                    placeholder="Nhập số tiền giảm tối đa (VD: 100000)"
-                                    formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                    parser={value => value.replace(/\$\s?|(,*)/g, '')}
-                                />
-                            </Form.Item>
-                        )}
-
-                        <Form.Item
-                            name="expiry"
-                            label="Ngày hết hạn"
-                            rules={[
-                                {required: true, message: 'Vui lòng chọn ngày hết hạn!'},
-                                {
-                                    validator: (_, value) => {
-                                        if (value && value.isBefore(dayjs(), 'day')) {
-                                            return Promise.reject('Ngày hết hạn phải sau ngày hiện tại!');
-                                        }
-                                        return Promise.resolve();
-                                    }
-                                }
-                            ]}
-                        >
-                            <DatePicker
-                                style={{width: '100%'}}
-                                placeholder="Chọn ngày hết hạn"
-                                format="DD/MM/YYYY"
-                                disabledDate={(current) => current && current < dayjs().startOf('day')}
-                            />
-                        </Form.Item>
-
-                        <Divider/>
-
-                        <Form.Item style={{marginBottom: 0}}>
-                            <Space style={{width: '100%', justifyContent: 'flex-end'}}>
-                                <Button onClick={handleCancel}>
-                                    Hủy
-                                </Button>
-                                <Button type="primary" htmlType="submit">
-                                    {editingCard ? 'Cập nhật' : 'Thêm mới'}
-                                </Button>
-                            </Space>
-                        </Form.Item>
-                    </Form>
-                </Modal>
-            </div>
-        </div>
+        {type === "Số tiền (VNĐ)" && (
+          <Form.Item
+            label="Chi tiêu tối thiểu"
+            name="minimumSpend"
+            rules={[
+              {
+                required: true,
+                message: "Chi tiêu tối thiểu là bắt buộc với loại Số tiền!",
+              },
+              {
+                type: "number",
+                min: 20000,
+                message: "Chi tiêu tối thiểu phải từ 20.000 VNĐ trở lên!",
+              },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              min={20000}
+              step={1000}
+              addonAfter="VNĐ"
+            />
+          </Form.Item>
+        )}
+      </>
     );
+  }}
+</Form.Item>
+
+
+         
+
+          <Form.Item
+            label="Số lượng"
+            name="quantity"
+            rules={[
+              { required: true, message: "Số lượng không được để trống!" },
+            ]}
+          >
+            <InputNumber min={1} style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item label="Hạn dùng" name="expiryDate">
+            <DatePicker format="DD/MM/YYYY" style={{ width: "100%" }} />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" style={{ width: "100%" }}>
+              {editData ? "Cập nhật" : "Thêm"}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </div>
+  );
 };
 
 export default GiftCards;

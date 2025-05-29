@@ -274,14 +274,14 @@ const Products = () => {
               {record.hidden ? "Hiển thị" : "Ẩn"}
             </Button>
           </Popconfirm>
-          <Popconfirm
+          {/* <Popconfirm
             title="Bạn có chắc chắn muốn xóa sản phẩm này?"
             onConfirm={() =>
               deleteProductFromFireBase(record.id).then(fetchProducts)
             }
           >
             <Button icon={<DeleteOutlined />} danger />
-          </Popconfirm>
+          </Popconfirm> */}
         </Space>
       ),
     },

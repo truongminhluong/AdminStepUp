@@ -13,6 +13,9 @@ import Orders from "./pages/Order/Orders";
 import Users from "./pages/Users";
 import Login from "./pages/Login";
 import GiftCards from "./pages/GiftCards";
+import VoucherStats from "./pages/VoucherStats";
+import VoucherUsers from "./pages/VoucherUsers";
+
 import "antd/dist/reset.css";
 import { ADMIN_UID } from "./config";
 import logo from "./images/logo.jpg";
@@ -188,6 +191,11 @@ const App = () => {
                         <Route path="/categories" element={<Category />} />
                         <Route path="/brands" element={<Brand />} />
                         <Route path="/users" element={<Users />} />
+                        <Route path="/voucher-users" element={<VoucherUsers />} />
+                        <Route
+                          path="/voucher-stats"
+                          element={<VoucherStats />}
+                        />{" "}
                         <Route path="/gift-cards" element={<GiftCards />} />
                         <Route path="/attributes" element={<Attribute />} />
                         <Route
